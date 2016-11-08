@@ -1,0 +1,13 @@
+Package: rFreight
+Title: Support for dissagregate simulation of freight movement
+Version: 0.1
+Authors@R: "Colin Smith <colin.smith@rsginc.com> [aut,cre]"
+Description: The functions can be used to create a complete model system that
+    simulates firms, trading relationships, freight demand, shipment frequency
+    and routing, and movements of freight by truck, rail, ship, and airplane.
+Depends: R (>= 3.1.1)
+License: GPL-3
+LazyData: true
+Packaged: 2016-10-05 16:39:53 UTC; cheither
+Author: "Colin Smith" [aut, cre]
+Maintainer: "Colin Smith" <colin.smith@rsginc.com>

@@ -1,0 +1,65 @@
+corresp_naics6_n6io_sctg
+                        Correspondence between NAICS 6, NAICS IO, and
+                        SCTG Codes
+corresp_sctg_category   Correspondence between SCTG Codes and other
+                        Commodity Aggregations
+data_2010io             Data: detailed 2010 use table after
+                        redefinitions
+data_emp_cbp            Correspondence between NAICS 6, NAICS IO, and
+                        SCTG Codes
+data_emp_cbpzone        Data table of employment by county
+data_firm_pref_weights
+                        Data: cost and time preference weights by SCTG
+                        commodity categories
+data_foreign_cons       Data: total export value by Country and
+                        commodity
+data_foreign_prod       Data: total import value by Country and
+                        commodity
+data_mesozone_centroids
+                        Data: centroids of the mesozones
+data_mesozone_emprankings
+                        Employment Ranking by Industry by County
+data_mesozone_gcd       Great Circle Distances between Mesozones
+data_mesozone_skims     Zone to Zone Travel Times Between Mesozones
+data_modepath_skims     Skimned Costs and Travel Times for Mode and
+                        Path Combinations
+data_unitcost           Unit Costs for SCTG Commodities
+loadInputs              Load a set of files to objects
+loadPackage             Install and load required R packages
+model_distchannel_calibration
+                        Distribution Channel Calibration Shares
+model_distchannel_food
+                        Distribution Channel Model Variables and
+                        Coefficients: Food Products
+model_distchannel_mfg   Distribution Channel Model Variables and
+                        Coefficients: Manufactured Goods
+model_numberoftours     Number of Tours Model Variables and
+                        Coefficients
+model_shipsize_calibration
+                        Shipment Size Calibration Shares
+model_shipsize_food     Shipment Size Model Variables and Coefficients:
+                        Food Products
+model_shipsize_mfg      Shipment Size Model Variables and Coefficients:
+                        Manufactured Goods
+model_stopduration      Stop Duration Model Variables and Coefficients
+model_timeofday         Time of Day Model Variables and Coefficients
+model_vehicle_tourpattern
+                        Vehicle and Tour Pattern Model Variables and
+                        Coefficients
+naics6naics2            Convert NAICS 6 to top level 2 digit codes
+predict_logit           Simulates the application of a logit model,
+                        with calibration
+progressEnd             Ends a model step
+progressManager         Starts and stops the overall progress
+                        management system for a model
+progressNextStep        Increments the progress bar to the next
+                        progress step
+progressStart           Starts a model step: progress bar, timing,
+                        loading inputs
+rFreight                Freight forecasting functions
+runPMG                  Builds the system call to the PMG application
+                        and runs the application
+saveOutputs             Save a set of objects to .csv files
+saveSummary             Save a set of summary tables
+startModel              Start the freight model
+writePMGini             Writes the ini file for the PMG application
