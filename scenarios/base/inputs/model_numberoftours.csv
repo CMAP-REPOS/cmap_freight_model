@@ -1,0 +1,21 @@
+CHID,CHDESC,VAR,TYPE,COEFF
+1,All stops in one route,asc1,Constant,4.52
+1,All stops in one route,Dest_Dist,Variable,2.09
+1,All stops in one route,PU_DO_Weight,Variable,-0.375
+1,All stops in one route,Dest_Mac,Variable,1.22
+1,All stops in one route,Dest_Office,Variable,1.71
+1,All stops in one route,Dest_Retail,Variable,1.57
+1,All stops in one route,Dest_Ware,Variable,0.958
+2,All stops in two routes,asc2,Constant,3.31
+2,All stops in two routes,Food,Variable,0.672
+2,All stops in two routes,Dest_Cont,Variable,-0.787
+2,All stops in two routes,Dest_Dist,Variable,1.49
+2,All stops in two routes,PU_DO_Weight,Variable,-0.375
+2,All stops in two routes,Dest_Mac,Variable,0.713
+2,All stops in two routes,Dest_Office,Variable,1.78
+3,All stops in three routes,asc3,Constant,2.14
+3,All stops in three routes,Food,Variable,1.06
+3,All stops in three routes,Dest_Cont,Variable,-0.473
+3,All stops in three routes,PU_DO_Weight,Variable,-0.254
+3,All stops in three routes,Dest_Retail,Variable,-0.749
+4,All stops in four routes,asc4,Constant,0
