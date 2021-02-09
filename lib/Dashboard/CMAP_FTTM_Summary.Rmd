@@ -1,0 +1,245 @@
+---
+title: "CMAP Freight Truck Touring Model Summary" 
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: scroll
+    theme: yeti
+    source_code: embed
+    css: "CMAPDashboard.css"
+---
+
+```{r loadPackages,echo=FALSE, results='hide', warning=FALSE}
+SYSTEM_APP_PATH    <- getwd()
+opts_knit$set(root.dir = SYSTEM_APP_PATH)
+opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r Graphics Colors & Themes, results='hide'}
+# colors
+rsgcolordf <- data.frame(red=c(246,0,99,186,117,255,82),
+                         green=c(139,111,175,18,190,194,77),
+                         blue=c(31,161,94,34,233,14,133),
+                         colornames=c("orange","marine","leaf","cherry","sky","sunshine","violet"))
+
+# ggplot2 theme used throughout the dashboard
+theme_db <- theme_bw() +
+            theme(plot.margin = unit(c(10,10,20,10),"pt")) +
+            theme(strip.background = element_rect(fill = "white"))
+```
+
+Freight Truck Tours
+============================================
+
+Summary {data-width=200}
+--------------------------------------------
+
+### About this Document
+
+This document is a summary of the Freight Truck Touring Model outputs from the CMAP Freight Model
+
+### Run Date
+
+```{r Run_Date_ValueBox}
+valueBox(Sys.Date(), "Dashboard Run Date", icon = "fa-calendar")
+```
+
+### Daily Shipments
+
+```{r Number_Daily_Shipments_ValueBox}
+valueBox(format(shipments[!is.na(ShipmentID),.N], big.mark = ","), "Number of Daily Shipments", icon = "fa-cube")
+```
+
+### Truck Tours
+
+```{r Number_Truck_Tours_ValueBox}
+valueBox(format(max(shipments$Tour_ID2, na.rm = TRUE), big.mark = ","), "Number of Truck Tours", icon = "fa-truck")
+```
+
+### Truck Trips
+
+```{r Number_Truck_Trips_ValueBox}
+valueBox(format(shipments[,.N], big.mark = ","), "Number of Truck Trips", icon = "fa-truck")
+```
+
+
+Column 2 {data-width=200}
+--------------------------------------------
+
+### Vehicle Choice and Tour Patterns
+
+```{r vehicle_choice}
+
+# Organize
+labels <- c("direct, 2 axle", "direct, 3-4 axle", "direct, semi/trailer",
+            "peddling, 2 axle", "peddling, 3-4 axle", "peddling, semi/trailer")
+
+vehtourpatsctg <- shipments[!is.na(ShipmentID),list(Freq=.N),by=list(TP_Veh,Commodity_SCTG)]
+vehtourpatsctg[,TP_Veh_Descr:=labels[TP_Veh]]
+
+vehtourlist <- list()
+vehtourlist$vehtourpatallcommodities <- vehtourpatsctg[,list(Freq=sum(Freq)),by=list(TP_Veh,TP_Veh_Descr)][order(TP_Veh)]
+
+if(nrow(vehtourpatsctg[Commodity_SCTG %in% 1:9])>0) vehtourlist$vehtourpatfood <- vehtourpatsctg[Commodity_SCTG %in% 1:9,list(Freq=sum(Freq)),by=list(TP_Veh,TP_Veh_Descr)][order(TP_Veh)]
+
+if(nrow(vehtourpatsctg[Commodity_SCTG %in% c(32:35,38:40)])>0) vehtourlist$vehtourpatmfg <- vehtourpatsctg[Commodity_SCTG %in% c(32:35,38:40),list(Freq=sum(Freq)),by=list(TP_Veh,TP_Veh_Descr)][order(TP_Veh)]
+
+dat <- vehtourlist$vehtourpatallcommodities
+
+# Plot
+p <- ggplot(dat, aes(x = TP_Veh_Descr, y = Freq)) +
+  geom_bar(stat = "identity", fill = rgb(rsgcolordf[c(2),],maxColorValue = 255)) +
+  xlab("Vehicle and Tour Type") +
+  scale_y_continuous(name = "Number of Shipments", labels = scales::comma) +
+  theme(axis.ticks = element_blank()) + coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "ft_sim_veh_type_tour_pat.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(vehtourlist$vehtourpatallcommodities, file = file.path(SCENARIO_OUTPUT_PATH, "vehtourpat_allcommodities.csv"), row.names = FALSE )
+write.csv(vehtourlist$vehtourpatfood, file = file.path(SCENARIO_OUTPUT_PATH, "vehtourpat_food.csv"), row.names = FALSE )
+write.csv(vehtourlist$vehtourpatmfg, file = file.path(SCENARIO_OUTPUT_PATH, "vehtourpat_mfg.csv"), row.names = FALSE )
+
+```
+
+### Stops per Tour
+
+```{r stop_sequence}
+
+# Organize
+labels_ss <- c("<999 lbs","1k-10k lbs","> 10k lbs")
+labels_nt <- paste("All stops in",c("1 tour","2 tours","3 tours","4 tours"))
+
+shipsizebynumtours <- shipments[!is.na(Ship_size) & !is.na(ShipmentID),.N,by=list(Ship_size,NTours)]
+shipsizebynumtours[,ss_lab:=labels_ss[Ship_size]]
+shipsizebynumtours[,Tour_Category:=labels_nt[NTours]]
+
+stopseqlist <- list()
+stopseqlist$stopseqtourcatbyshipsize <- dcast.data.table(shipsizebynumtours,Tour_Category~ss_lab,fun=sum,value.var="N")
+stopseqlist$stopseqnumstopspertour <- shipments[,list(stop_count=max(NTrips,na.rm=TRUE)),by=list(Tour_ID2)][,list(Frequency=.N),by=stop_count][order(stop_count)]
+
+dat <- stopseqlist$stopseqnumstopspertour
+
+# Plot
+p <- ggplot(data = dat, aes(factor(stop_count), Frequency)) +
+  geom_bar(stat = "identity", fill = rgb(rsgcolordf[c(3),],maxColorValue = 255)) +
+  xlab("Stop Count") +
+  scale_y_continuous(name = "Number of Tours", labels = scales::comma) +
+  theme(axis.ticks = element_blank())
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "ft_sim_tours_by_num_stops.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(stopseqlist$stopseqtourcatbyshipsize, file = file.path(SCENARIO_OUTPUT_PATH, "stopseq_tourcatbyshipsize.csv"), row.names = FALSE )
+write.csv(stopseqlist$stopseqnumstopspertour, file = file.path(SCENARIO_OUTPUT_PATH, "stopseq_numstopspertour.csv"), row.names = FALSE )
+
+```
+
+Column 3 {data-width=200}
+--------------------------------------------
+
+### Stop Clustering
+
+```{r stop_cluster, fig.height=10}
+
+if(length(unique(shipments[distchannel>1]$WarehouseID))>10){
+
+  # Organize
+  dat <- data.frame(shipments[WarehouseID %in% sample(unique(shipments[distchannel>1]$WarehouseID),5),])
+  
+  # Plot
+  p <- ggplot(data = dat, aes(x = x_coord, y = y_coord, colour = Tour_ID)) +
+   geom_point() +
+    theme(axis.ticks = element_blank(), legend.position="none") + 
+    facet_grid(warehouse ~ NTours)
+  p
+  
+  # Save
+  # png(filename = file.path(SCENARIO_OUTPUT_PATH, "ft_sim_stopseq_stopcluster_sample.png"), width = 600, height = 800)
+  # p
+  # dev.off()
+
+}
+
+```
+
+
+Column 4 {data-width=200}
+--------------------------------------------
+
+### Stop Durations
+
+```{r stop_duration}
+
+# Organize
+labels_sd <- c("<15 mins","15-30 mins","30-45 mins","45-60 mins","60-75 mins",">75 mins")
+
+durationbytourtype <- shipments[!is.na(StopDur),.N,by=list(Direct,StopDur)]
+durationbytourtype[,Stop_Duration:=labels_sd[StopDur]]
+durationbytourtype[,TourType:=ifelse(Direct==1,"DirectTour_Stops","PeddlingTours_Stops")]
+
+stopdurdurationbytourtype <- dcast.data.table(durationbytourtype,Stop_Duration~TourType,fun=sum,value.var="N")
+
+dat <- durationbytourtype
+
+# Plot
+p <- ggplot(data = dat, aes(x = factor(Stop_Duration, levels = labels_sd), y = N, fill = TourType)) +
+ geom_bar(stat = "identity", position = "dodge") +
+  xlab("Stop Duration") +
+  scale_fill_manual(name = "Tour Type", values =  rgb(rsgcolordf[2:3,],maxColorValue = 255), labels = c("Direct", "Peddling")) +
+  scale_y_continuous(name = "Number of Stops", labels = scales::comma) +
+  theme(axis.ticks = element_blank(), legend.position="bottom")
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "ft_sim_stops_by_duration.png"), width = 600, height = 800)
+# p
+# dev.off()
+
+write.csv(stopdurdurationbytourtype, file = file.path(SCENARIO_OUTPUT_PATH, "stopdur_durationbytourtype.csv"), row.names = FALSE )
+
+```
+
+### Tour Start Time of Day
+
+```{r tour_tod}
+
+# Organize
+ 
+labels_tod <- c("Before 6AM","6-8AM","8-9AM","9-10AM","After 10AM")
+
+todbytourtype <- shipments[!is.na(Direct),list(TODCat=max(TOD,na.rm=TRUE)),by=list(Tour_ID2,Direct)]
+todbytourtype <- todbytourtype[,.N,by=list(Direct,TODCat)]
+todbytourtype[,TOD:=labels_tod[TODCat]]
+todbytourtype[,TourType:=ifelse(Direct==1,"Direct_Tours","Peddling_Tours")]
+
+todbytourtypext <- dcast.data.table(todbytourtype,TODCat+TOD~TourType,fun=sum,value.var="N")[,list(TOD,Direct_Tours,Peddling_Tours)]
+
+dat <- todbytourtype
+
+# Plot
+p <- ggplot(data = dat, aes(x = factor(TOD, levels = labels_tod), y = N, fill = TourType)) +
+ geom_bar(stat = "identity", position = "dodge") +
+  xlab("Tour Start Time of Day") +
+  scale_fill_manual(name = "Tour Type", values =  rgb(rsgcolordf[2:3,],maxColorValue = 255), labels = c("Direct", "Peddling")) +
+  scale_y_continuous(name = "Number of Tours", labels = scales::comma) +
+  theme(axis.ticks = element_blank(), legend.position="bottom")
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "ft_sim_tours_by_tod.png"), width = 600, height = 800)
+# p
+# dev.off()
+
+write.csv(todbytourtypext, file = file.path(SCENARIO_OUTPUT_PATH, "tod_todbytourtype.csv"), row.names = FALSE )
+
+
+```
+
+

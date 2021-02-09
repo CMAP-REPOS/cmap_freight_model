@@ -1,0 +1,1838 @@
+---
+title: "CMAP Dashboard"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    theme: yeti
+    source_code: embed
+    css: "CMAPDashboard.css"
+params:
+  model.run.names: !r c("Dashboard_Test", "Dashboard_Test_copy1", "Dashboard_Test_copy2")
+  display: "both"
+---
+
+```{r loadPackages,echo=FALSE, results='hide', warning=FALSE}
+loadPackages <- function (packages, lib = NULL, suppressMessages = TRUE, suppressWarnings = FALSE) 
+{
+  notinstalled <- packages[!packages %in% .packages(all.available = TRUE, 
+                                                    lib.loc = lib)]
+  if (length(notinstalled) > 0) 
+    install.packages(notinstalled, repos = "http://cran.r-project.org", 
+                     dependencies = TRUE, lib = lib)
+  for (package in packages) {
+    library.expression <- paste0("library(", package, ", lib = lib)")
+    if (suppressMessages) 
+      library.expression <- paste0("suppressMessages(", 
+                                   library.expression, ")")
+    if (suppressWarnings) 
+      library.expression <- paste0("suppressWarnings(", 
+                                   library.expression, ")")
+    eval(parse(text = library.expression))
+  }
+  invisible(TRUE)
+}
+
+SYSTEM_REPORT_PKGS <- c("DT", "flexdashboard", "htmltools", "knitr", "LaF", "bit64", "ggplot2", "data.table","formattable", "assertthat")
+
+invisible(loadPackages(SYSTEM_REPORT_PKGS))
+
+try(detach("package:RSGFAF", unload = TRUE))
+if (!dir.exists(file.path(SYSTEM_PKGS_PATH, "RSGFAF"))) {
+  install.packages(file.path(SYSTEM_APP_PATH, "lib", "RSGFAF_4.3-1.zip"),
+                   repos = NULL,
+                   lib = SYSTEM_PKGS_PATH)
+}
+library(RSGFAF, lib.loc = SYSTEM_PKGS_PATH)
+
+opts_knit$set(root.dir = SYSTEM_APP_PATH)
+opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r Graphics Colors & Themes, results='hide'}
+# Used for choosing persistent colors for each data set.
+data.color.vec <- c("#FF7F00", "#984EA3", "#4DAF4A", "#377EB8", "#E41A1C")
+
+# ggplot2 theme used throughout the dashboard
+theme_db <- theme_bw() +
+            theme(plot.margin = unit(c(10,10,20,10),"pt")) +
+            theme(strip.background = element_rect(fill = "white"))
+```
+
+```{r Common Data Values, results='hide'}
+# Recalculated from parameters
+if (params$display == "reference") {
+  include.ref <- TRUE
+  include.model <- FALSE
+} else if (params$display == "model") {
+  include.ref <- FALSE
+  include.model <- TRUE
+} else if (params$display == "both") {
+  include.ref <- TRUE
+  include.model <- TRUE
+}
+
+# CMAP Definitions and could-be parameters
+region.FAF.codes <- c(171,181)
+region.BEA.codes <- c(64)
+FAF.year <- 2012
+FAF.data.name <- paste("FAF", FAF.year)
+
+# Unit conversions
+lbstoTons <- 0.0005 # Convert from lbs to tons
+Tons.to.Thousand.Tons <- 1E-3
+Tonmiles.to.Million.Tonmiles <- 1E-6
+USDollars.to.Million.USDollars <- 1E-6
+
+# SCTG Codes
+latestSCTGCodes <- SCTGCodes[Version==getLatestFAFVersion()]
+latestSCTGCodes[,Version:=NULL]
+latestSCTGCodes <- latestSCTGCodes[!duplicated(SCTG)]
+latestSCTGCodes[, SCTGLabel := paste(SCTG, Label)]
+latestSCTGCodes[, SCTGLabel := reorder(SCTGLabel,SCTG,function(x) unique(x))]
+setkey(latestSCTGCodes,SCTG)
+
+# Load MesoZone to FAF zone, state, region mapping
+geoCorrespond <- fread(file.path(SYSTEM_APP_PATH, "lib", "Dashboard", "meso_faf3_map.csv"))
+geoCorrespond[, STATE := factor(STATE)]
+geoCorrespond[, STATECODE := factor(STATECODE)]
+geoCorrespond[, REGION := factor(REGION)]
+geoCorrespond[, SUBREGION := factor(SUBREGION)]
+setkey(geoCorrespond, "MESOZONE")
+
+# Read SCTG to SCTCC correspondence table
+stcc_to_sctg <- fread(file.path(SYSTEM_APP_PATH, "lib", "Dashboard", "STCC_SCTG_correspondence.csv"),stringsAsFactors = TRUE)
+stcc_to_sctg[,Description1:=reorder(Description1,Correspond,unique)]
+stcc_to_correspond <- stcc_to_sctg[!is.na(STCC_2),.(STCC_2,Description2,Correspond,Description1)]
+sctg_to_correspond <- stcc_to_sctg[!is.na(SCTG),.(SCTG,Description3,Correspond,Description1)]
+setkey(stcc_to_correspond,STCC_2)
+setkey(sctg_to_correspond,SCTG)
+
+# Correspondence table for Waterborne Commerce Commodity Codes
+water.commodity.codes <- fread(file.path(SYSTEM_APP_PATH, "lib", "Dashboard", "Waterborne_Commerce_Code.csv"))
+```
+
+```{r Graphics Functions, results='hide'}
+buildValidateGraph <- function(data.stacked, result.measure, geographic.aggr,
+                               x.cat, x.label, chart.type = "line") {
+  # Builds a ggplot2 graph comparing RSG model, FAF, and some other data source on a national or regional level
+  #
+  # Args:
+  #   data.stacked   : data.table containing the unaggregated data to be compared from all data sources,
+  #                      with a "Table" column to mark observations with their data source.
+  #   result.measure : one of "Tons", "Tonmiles", "Values", "Tonshare", "Tonmileshare", or "Valueshare",
+  #                      determines which measure of comparison will be graphed
+  #   geographic.aggr: either "national", "regional", "cmap", or "regional.cmap", determines whether a single nationwide comparison graph
+  #                      will be created or a facet graph for each region or CMAP type.
+  #   x.cat          : a string, the name of the field of data.stacked that you want to be the x-axis category
+  #   x.label        : a string, the label for the x-axis of the graph
+  #   chart.type     : either "line" or "bar", defaults to bar if there is only one commodity type (e.g. T-100 data)
+  #
+  # Returns:
+  #   Nothing, but prints a ggplot graph
+  #
+  # Other requirements for data.stacked:
+  #   must include the following column names:
+  #     "Origin.Region", "Destination.Region", "Tons", "Tonmiles", "Values", as well as some field to serve as x.cat
+  #     additionally, if geographic.aggr == "cmap", a "Move.Type" column must be included.
+  #     The numeric columns of these data tables must all be of type "numeric", not having any extra classes
+  #     x.cat entries must be short, probably 'numeric" type only. Use an external correspondence
+  #       table to clarify the meaning of the numbers.
+  
+  # Requiring packages
+  require(ggplot2)
+  require(data.table)
+  require(assertthat)
+  
+  if (data.stacked[, .N] > 0) {
+    cols.stack <- colnames(data.stacked)
+    
+    # Checking code assumptions
+    assert_that(result.measure %in% c("Tons", "Tonmiles", "Values", "Tonshare", "Tonmileshare", "Valueshare"))
+    assert_that(geographic.aggr %in% c("national", "regional", "cmap", "regional.cmap", "commodity"))
+    assert_that(chart.type %in% c("line", "bar"))
+    assert_that("Table" %in% cols.stack)
+    assert_that(x.cat %in% cols.stack)
+    if (geographic.aggr == "cmap") {assert_that("Move.Type" %in% cols.stack)}
+    if (geographic.aggr %in% c("regional", "regional.cmap")) {
+      assert_that(all(c("Origin.Region", "Destination.Region") %in% cols.stack))
+    }
+    if (geographic.aggr == "commodity") {assert_that("Mode.Domestic" %in% cols.stack)}
+    
+    if(result.measure %in% c("Tons", "Tonshare")){result.type <- "Tons"}
+    if(result.measure %in% c("Tonmiles", "Tonmileshare")){result.type <- "Tonmiles"}
+    if(result.measure %in% c("Values", "Valueshare")){result.type <- "Values"}
+    
+    assert_that(result.type %in% colnames(data.stacked))
+    
+    tables.remove <- c()
+    for (entry in data.stacked[!duplicated(Table), Table]){
+      if(all(is.na(data.stacked[Table == entry, get(result.type)]))){
+        tables.remove <- c(tables.remove, entry)
+      }
+    }
+    
+    # Remove tables without result measure and re-label category column
+    data.local <- data.stacked[!(Table %in% tables.remove)]
+    setnames(data.local, x.cat, "Category")
+    
+    if (result.measure %in% c("Tonshare", "Tonmileshare", "Valueshare")) {
+      share.reqd <- TRUE
+    } else {
+      share.reqd <- FALSE
+    }
+    
+    if (geographic.aggr == "regional" | geographic.aggr == "regional.cmap"){
+      # Aggregate regionally by Origin.Region, Destination.Region and Category, using generic column names to be replaced later
+      data.aggregate <- data.local[, .(measure.total = sum(get(result.type))), by = .(Category, Origin.Region, Destination.Region, Table)]
+      if (share.reqd) {
+        data.aggregate[, measure.share := measure.total/sum(measure.total)*100, by = .(Origin.Region, Destination.Region, Table)]
+      }
+    } else if (geographic.aggr == "national") {
+      # Aggregate nationally by x.cat, using generic column names to be replaced later
+      data.aggregate <- data.local[, .(measure.total = sum(get(result.type))), by= .(Category, Table)]
+      if (share.reqd) {
+        data.aggregate[, measure.share := measure.total/sum(measure.total)*100, by = Table]
+      }
+    } else if (geographic.aggr == "cmap") {
+      # Aggregate by to, from, within CMAP by Move.Type and x.cat, using generic column names to be replaced later
+      data.aggregate <- data.local[, .(measure.total = sum(get(result.type))), by = .(Category, Move.Type, Table)]
+      if (share.reqd) {
+        data.aggregate[, measure.share := measure.total/sum(measure.total)*100, by = .(Move.Type, Table)]
+      }
+    } else if (geographic.aggr == "commodity") {
+      # Aggregate nationally by x.cat and mode, using generic column names to be replaced later
+      data.aggregate <- data.local[, .(measure.total = sum(get(result.type))), by = .(Category, Mode.Domestic, Table)]
+      if (share.reqd) {
+        data.aggregate[, measure.share := measure.total/sum(measure.total)*100, by = .(Mode.Domestic, Table)]
+      }
+    }
+    
+    rm(data.local)
+    
+    ## Replace generic column names and add data source identifiers
+    # The string "hare" is appended because "Tons", "Tonmiles", and "Values" can be converted to
+    #   "Tonshare", "Tonmileshare", and "Valueshare", respectively, by appending "hare".
+    setnames(data.aggregate, "measure.total", result.type)
+    if (share.reqd) {setnames(data.aggregate, "measure.share", paste0(result.type, "hare"))}
+    setorder(data.aggregate, Category)
+    
+    ## Change facet titles by adding "To" and "From" to aggregate.all columns
+    if(geographic.aggr == "regional" | geographic.aggr == "regional.cmap"){
+      data.aggregate[, Origin.Region := paste("From", Origin.Region)]
+      data.aggregate[, Destination.Region := paste("To", Destination.Region)]
+    } else if (geographic.aggr == "commodity") {
+      data.aggregate[, Category := latestSCTGCodes[.(Category), SCTGLabel]]
+    }
+    
+    data.aggregate[, Category := factor(Category)]
+
+    ## Insert NAs to categories with blank data to control bar graph column width
+    if (chart.type == "bar") {
+      # Find vectors of unique values for each category
+      data.unique.cats <- copy(data.aggregate[, !result.measure, with = FALSE])
+      cat.col.names <- colnames(data.unique.cats)
+      for (i in 1:length(cat.col.names)) {
+        cur.col.name <- cat.col.names[i]
+        assign(cur.col.name, unique(data.unique.cats[, get(cur.col.name)]))
+      }
+      # Cross-join the unique-value vectors to get all the possible unique combinations
+      cross.join <- do.call(CJ, mget(cat.col.names))
+      data.aggregate <- merge(data.aggregate, cross.join, by = cat.col.names, all = TRUE)
+      
+      if (geographic.aggr == "regional.cmap") {
+        data.aggregate <- data.aggregate[Origin.Region == "From CMAP" | Destination.Region == "To CMAP"]
+      }
+    }
+    
+    #############
+    ## Generate plot
+    #############
+    p <- data.aggregate %>%
+      ggplot(aes(x=Category,y=get(result.measure),group=Table,color=Table), environment = environment())+
+      theme_db+
+      theme(axis.text.x = element_text(angle=(90-60),hjust=1,vjust=1), legend.position = "bottom")+
+      labs(color = "Data Source", fill = "Data Source", group = "Data Source", lty = "Data Source", shape = "Data Source")+
+      xlab(x.label)+
+      scale_color_manual(values = data.colors)+
+      scale_fill_manual(values = data.colors)
+    
+    ## Change y-label to reflect units of result.measure
+    if (result.measure == "Tonmiles") {
+      p <- p + ylab(paste(result.measure, "(Millions)"))
+    } else if (result.measure == "Values") {
+      p <- p + ylab(paste("Values", "(Million USD)"))
+    } else if (result.measure == "Tons") {
+      p <- p + ylab(paste(result.measure, "(Thousands)"))
+    } else if (result.measure %in% c("Tonshare", "Tonmileshare", "Valueshare")) {
+      p <- p + ylab(paste(result.measure, "(%)"))
+    }
+    
+    ## Set chart facetting
+    if (geographic.aggr == "regional") {  ## Perform facetting if graph is to compare regions
+      p <- p + facet_grid(Destination.Region~Origin.Region) #, scales = "free_y"
+    } else if (geographic.aggr == "cmap") {  ## Perform facetting if graph is to compare in, out, within CMAP
+      p <- p + facet_grid(Move.Type~.) #, scales = "free_y"
+    } else if (geographic.aggr == "regional.cmap") {
+      p <- p + facet_wrap(~Origin.Region+Destination.Region, nrow = 2) #, scales = "free_y"
+    } else if (geographic.aggr == "commodity") {
+      p <- p + facet_grid(.~Mode.Domestic,scales = "free_x") +
+        coord_flip() +
+        labs(caption = "Note: Each subplot is displayed with a different scale.")
+    }
+    
+    ## Set chart geometries
+    if (chart.type == "line") { # If a line graph is desired, make lines and points mapped to Data Source
+      p <- p + geom_line(aes(lty=Table),lwd=1, na.rm = TRUE)+
+               geom_point(aes(shape=Table), size = 3, na.rm = TRUE)
+    } else if (chart.type == "bar") { # If a bar graph is desired, make bars mapped to Data Source
+      p <- p + geom_bar(aes(fill=Table),stat="identity", position = "dodge", na.rm = TRUE)
+    }
+    
+    print(p)
+  } else {
+    cat("The input dataset for this chart has zero rows. No data can be displayed.")
+  }
+}
+
+
+buildDataTable <- function(data.formatted, container.sketch, type.currency = FALSE) {
+  # Constructs a javascript DataTable object using the DT package, using
+  # customized settings specific to the CMAP Dashboard.
+  #
+  # Args:
+  #   data.formatted  : data frame with rows and columns that match the structure
+  #                       of the container.sketch
+  #   container.sketch: DataTable container object which specifies how the rows
+  #                       and columns of the table should appear. This object
+  #                       should match the structure of data.formatted.
+  #   type.currency   : boolean, when true, values are displayed with dollar signs
+  #
+  # Returns:
+  #   None, but prints a DataTable object into the dashboard
+  
+  if (include.ref & include.model) {  
+    dt <- datatable(data.formatted,
+                    container=container.sketch,
+                    rownames=FALSE,
+                    fillContainer = TRUE,
+                    options = list(info=FALSE,
+                                   searching=FALSE,
+                                   paging=FALSE))
+    if (type.currency) {
+      dt <- formatCurrency(dt, 2:ncol(data.formatted), digits=0)
+    } else {
+      dt <- formatCurrency(dt, 2:ncol(data.formatted),currency="",digits=0)
+    }
+    
+    dt <- formatStyle(dt, columns=2:ncol(data.formatted),           backgroundColor=styleInterval(sort(unlist(data.formatted[,2:ncol(data.formatted)]))[-1],createCSSColors(sort(unlist(data.formatted[,2:ncol(data.formatted)])),"white","orange")),backgroundSize="90% 80%",backgroundRepeat="no-repeat",backgroundPosition="center")
+    
+    dt
+  } else {
+    cat("In order to see this table, please set display = 'both' and specify at least one scenario when you call DashboardRender.")
+  }
+}
+
+
+# Function to create css style colors for tables
+createCSSColors <- function(x,min.color,max.color,...){
+  clrs <- gradient(x,min.color,max.color,...)
+  clrs <- paste("rgb(",apply(t(clrs),1,paste,collapse=","),")",sep="")
+  return(clrs)
+}
+
+
+generateDataColors <- function(table.nms, ref.table) {
+  # This function, run after all data is stacked, generates unique, persistent 
+  # colors for each data set to be used in this run of the dashboard.
+  # 
+  # Args:
+  #   table.nms: data.table of strings naming the non-reference data tables
+  #   ref.table: data.table containing all the input datasets and reference
+  #                datasets to be compared
+  # Returns: 
+  #   A named vector of hex color values, with the names being
+  #   the names of the data table used in this dashboard run.
+  
+  # Assign non-FAF reference data color to all datasets
+  color.table <- data.table(Table = ref.table[!duplicated(Table), Table],
+                            Color = data.color.vec[5])
+  if (include.model) { # Overwrite color for model datasets with model colors
+    color.table[Table %in% params$model.run.names, Color := data.color.vec[1:length(params$model.run.names)]]
+  }
+  if (include.ref) { # Overwrite color for FAF dataset with FAF color
+    color.table[Table == FAF.data.name, Color := data.color.vec[4]]
+  }
+
+  # Create and return named vector of colors
+  data.colors <- color.table[, Color]
+  names(data.colors) <- color.table[, Table]
+  return(data.colors)
+}
+```
+
+```{r Data Loading Functions, results='hide'}
+removeColumns <- function(dt, cols.rm) {
+  # Removes columns from a data.table, and collects garbage invisibly
+  # Args:
+  #   dt     : data.table from which columns will be removed
+  #   cols.rm: vector of strings, each naming a column to be removed from dt
+  
+  if (length(cols.rm != 0)) {
+    dt[, (cols.rm) := NULL]
+    invisible(gc())
+  }
+}
+
+prepDashModelData <- function(model.dt, skim.loc, mode.loc) {
+  # Builds a ggplot2 graph comparing RSG model, FAF, and some other data source on a national or regional level
+  #
+  # Args:
+  #   model.dt   : string containing the file path to the model data that will
+  #                  be included in the dashboard
+  #   skim.loc   : string containing the file path to the
+  #                  data_modepath_miles.csv specific to this model run.
+  #
+  # Returns:
+  #   A standard stackable data table
+  
+  
+  #### Remove all except the necessary columns
+  if ("Commodity_SCTG" %in% colnames(model.dt)) {
+    setnames(model.dt, "Commodity_SCTG", "SCTG")
+  }
+  if ("Production_zone" %in% colnames(model.dt) & "Consumption_zone" %in% colnames(model.dt)) {
+    setnames(model.dt, c("Production_zone", "Consumption_zone"), c("Origin.Mesozone", "Destination.Mesozone"))
+  }
+  if ("Distance" %in% colnames(model.dt)) {
+    setnames(model.dt, "Distance", "GCircle_Distance")
+  }
+  cols.keep <- c("Origin.Mesozone", "Destination.Mesozone", "SCTG", "ConVal", "GCircle_Distance", "path", "Last.Iteration.Quantity", "PurchaseAmountTons")
+  
+  removeColumns(model.dt, setdiff(colnames(model.dt), cols.keep))
+  
+  
+  #### Distance
+  # Skim information for this model run only
+  network.dists <- as.data.table(fread(skim.loc, showProgress = FALSE))
+  # Find domestic network miles
+  # Add domestic linehaul miles and domestic drayage miles, but watch for "Air" super-long distances
+  network.dists[, Network_Distance := DmsLhMiles + DmsDrayMiles]
+  
+  # Reduce attributes of network distances file
+  network.dists.reduced <- network.dists[, .(Origin, Destination, path = MinPath, Network_Distance)]
+  rm(network.dists)
+  invisible(gc())
+  setnames(network.dists.reduced, c("Origin", "Destination"), c("Origin.Mesozone", "Destination.Mesozone"))
+  
+  setkey(model.dt, "Origin.Mesozone", "Destination.Mesozone", "path")
+  setkey(network.dists.reduced, "Origin.Mesozone", "Destination.Mesozone", "path")
+  model.dt <- merge(model.dt, network.dists.reduced, all.x = TRUE)
+  
+  # Make final Distance column to be referenced by the dashboard. This takes the
+  # Network_Distance, unless Network_Distance is NA, in which case it uses the
+  # GCircle_Distance.
+  model.dt[, Distance := Network_Distance]
+  model.dt[is.na(Network_Distance), Distance := GCircle_Distance]
+  
+  removeColumns(model.dt, c("GCircle_Distance", "Network_Distance"))
+  
+  
+  #### Tons, Tonmiles, Values
+  if(is.integer64(model.dt$Last.Iteration.Quantity)){
+    model.dt[, Last.Iteration.Quantity := as.double.integer64(Last.Iteration.Quantity)]
+  }
+  # From here on out, Tons are in thousands, Tonmiles are in millions, and values
+  # are in millions of US Dollars
+  model.dt[, Tons := Last.Iteration.Quantity * lbstoTons * Tons.to.Thousand.Tons]
+  model.dt[, Tonmiles := Tons * Distance * 1E-3]
+  model.dt[, Values := Last.Iteration.Quantity * ConVal / PurchaseAmountTons * USDollars.to.Million.USDollars]
+  
+  removeColumns(model.dt, c("Last.Iteration.Quantity", "Distance", "ConVal", "PurchaseAmountTons"))
+  
+  #### Trade.Type
+  model.dt[Origin.Mesozone <= 273 & Destination.Mesozone <= 273, Trade.Type := "Domestic"]
+  model.dt[Origin.Mesozone > 273 & Destination.Mesozone <= 273, Trade.Type := "Import"]
+  model.dt[Origin.Mesozone <= 273 & Destination.Mesozone > 273, Trade.Type := "Export"]
+  model.dt[, Trade.Type := factor(Trade.Type)]
+  
+  # Mode definitions for this model run only
+  # Load mode mapping, converting all "Multiple" modes to "Rail", in order to match better with FAF data.
+  modeCategories <- fread(mode.loc, stringsAsFactors = FALSE)
+  modeCategories[, LinehaulMode := Mode]
+  modeCategories[LinehaulMode == "Multiple", LinehaulMode := "Rail"]
+  modeCategories[, LinehaulMode := factor(LinehaulMode, levels = c("Truck", "Rail", "Water", "Air", "Multiple", "Pipeline", "Other", "None"), 
+                                          ordered = TRUE)]
+  modeCategories[, International := factor(International, levels = c("Truck", "Rail", "Water", "Air", "Multiple", "Pipeline", "Other", "None"), 
+                                           ordered = TRUE)]
+  setkey(modeCategories,ModeNumber)
+  
+  #### Domestic Mode
+  model.dt[Trade.Type == "Domestic", Mode.Domestic:=modeCategories[.(path),LinehaulMode]]
+  removeColumns(model.dt, c("path"))
+  
+  #### Move.Type
+  # Assign FAF zones to origin and destination
+  model.dt[Trade.Type!="Import", Origin.Domestic:=geoCorrespond[.(Origin.Mesozone), FAFZONE]]
+  model.dt[Trade.Type!="Export", Destination.Domestic:=geoCorrespond[.(Destination.Mesozone), FAFZONE]]
+  
+  # Assign move type, whether within or between zones
+  model.dt[Origin.Domestic == Destination.Domestic, Move.Type:="Within Zones"]
+  model.dt[Origin.Domestic != Destination.Domestic, Move.Type:="Between Zones"]
+  model.dt[, Move.Type := factor(Move.Type, levels = c("Within Zones", "Between Zones", "Inbound", "Outbound", "Within"), ordered = TRUE)]
+  
+  removeColumns(model.dt, c("Origin.Domestic", "Destination.Domestic"))
+  
+  #### Regions
+  model.dt[,Origin.Region := geoCorrespond[.(Origin.Mesozone), REGION]]
+  model.dt[,Destination.Region := geoCorrespond[.(Destination.Mesozone), REGION]]
+  
+  #### Output
+  model.dt <- model.dt[, .(Tons = sum(Tons), Tonmiles = sum(Tonmiles), Values = sum(Values)),
+                       by = .(Trade.Type, Move.Type, Origin.Mesozone, Destination.Mesozone, 
+                              Origin.Region, Destination.Region, Mode.Domestic, SCTG)]
+  return(model.dt)
+}
+
+prepDashFAFData <- function(year.selected) {
+  faf.dt <- suppressWarnings(getFAFData(year = year.selected))
+  ## Note: Observed that some tonmiles are 0 while tons are greater than 0.
+  
+  faf.dt[, Mode.Domestic := factor(Mode.Domestic, levels = c("Truck", "Rail", "Water", "Air", "Multiple", "Pipeline", "Other", "None"), ordered = TRUE)]
+  faf.dt[, Mode.Foreign := factor(Mode.Foreign, levels = c("Truck", "Rail", "Water", "Air", "Multiple", "Pipeline", "Other", "None"), ordered = TRUE)]
+  
+  ###################################
+  # Most of mode multiple actually travels with rail as its linehaul mode. This may be changed later.
+  faf.dt[Mode.Domestic == "Multiple", Mode.Domestic := "Rail"]
+  faf.dt[Mode.Foreign == "Multiple", Mode.Foreign := "Rail"]
+  
+  faf.dt[Origin.Domestic==Destination.Domestic,Move.Type:="Within Zones"]
+  faf.dt[Origin.Domestic!=Destination.Domestic,Move.Type:="Between Zones"]
+  faf.dt[, Move.Type := factor(Move.Type, levels = c("Within Zones", "Between Zones", "Inbound", "Outbound", "Within"), ordered = TRUE)]
+  
+  setkey(geoCorrespond, "STATE")
+  faf.dt[,':='(Origin.Region=unique(geoCorrespond, by = c("STATE", "REGION"))[.(Origin.State),REGION],
+               Destination.Region=unique(geoCorrespond, by = c("STATE", "REGION"))[.(Destination.State),REGION])]
+  
+  # Adjusting units to match dashboard unit conventions
+  faf.dt[, ':=' (Tons = Tons*Tons.to.Thousand.Tons, 
+                 Tonmiles = Tonmiles*Tonmiles.to.Million.Tonmiles,
+                 Values = Value*USDollars.to.Million.USDollars,
+                 Value = NULL)]
+  
+  setnames(faf.dt, c("Origin.Domestic", "Destination.Domestic"), c("Origin.FAFzone", "Destination.FAFzone"))
+  
+  faf.dt <- faf.dt[, .(Trade.Type,  Move.Type, Origin.FAFzone, Destination.FAFzone, Origin.Region, Destination.Region, Mode.Domestic, SCTG, Tons, Tonmiles, Values)]
+  
+  return(faf.dt)
+}
+
+
+
+regionalize <- function(pairs.dt, region.name, region.codes.FAF) {
+  #### Adapt a version of pairs.dt to describe CMAP trends
+  region.codes.meso <- geoCorrespond[FAFZONE %in% region.codes.FAF, MESOZONE]
+  
+  if (all(c("Origin.Mesozone", "Destination.Mesozone", "Origin.FAFzone", "Destination.FAFzone") %in% colnames(pairs.dt))) {
+    # Select all pairs that involve the chosen region
+    pairs.dt.region <- pairs.dt[Origin.Mesozone %in% region.codes.meso | Destination.Mesozone %in% region.codes.meso |
+                                  Origin.FAFzone %in% region.codes.FAF | Destination.FAFzone %in% region.codes.FAF]
+    
+    # Perform regionalization by mesozone
+    pairs.dt.region[Origin.Mesozone %in% region.codes.meso & Destination.Mesozone %in% region.codes.meso, Move.Type:="Within"]
+    pairs.dt.region[Origin.Mesozone %in% region.codes.meso & !(Destination.Mesozone %in% region.codes.meso), Move.Type:="Outbound"]
+    pairs.dt.region[!(Origin.Mesozone %in% region.codes.meso) & Destination.Mesozone %in% region.codes.meso, Move.Type:="Inbound"]
+    pairs.dt.region[Origin.Mesozone %in% region.codes.meso, Origin.Region := region.name]
+    pairs.dt.region[Destination.Mesozone %in% region.codes.meso, Destination.Region := region.name]
+    
+    # Perform regionaliztion by FAFzone
+    pairs.dt.region[Origin.FAFzone %in% region.codes.FAF & Destination.FAFzone %in% region.codes.FAF, Move.Type:="Within"]
+    pairs.dt.region[Origin.FAFzone %in% region.codes.FAF & !(Destination.FAFzone %in% region.codes.FAF), Move.Type:="Outbound"]
+    pairs.dt.region[!(Origin.FAFzone %in% region.codes.FAF) & Destination.FAFzone %in% region.codes.FAF, Move.Type:="Inbound"]
+    pairs.dt.region[Origin.FAFzone %in% region.codes.FAF, Origin.Region := region.name]
+    pairs.dt.region[Destination.FAFzone %in% region.codes.FAF, Destination.Region := region.name]
+    
+  } else if (all(c("Origin.Mesozone", "Destination.Mesozone") %in% colnames(pairs.dt))) {
+    # Select all pairs that involve the chosen region
+    pairs.dt.region <- pairs.dt[Origin.Mesozone %in% region.codes.meso | Destination.Mesozone %in% region.codes.meso]
+    
+    # Perform regionalization by mesozone
+    pairs.dt.region[Origin.Mesozone %in% region.codes.meso & Destination.Mesozone %in% region.codes.meso, Move.Type:="Within"]
+    pairs.dt.region[Origin.Mesozone %in% region.codes.meso & !(Destination.Mesozone %in% region.codes.meso), Move.Type:="Outbound"]
+    pairs.dt.region[!(Origin.Mesozone %in% region.codes.meso) & Destination.Mesozone %in% region.codes.meso, Move.Type:="Inbound"]
+    pairs.dt.region[Origin.Mesozone %in% region.codes.meso, Origin.Region := region.name]
+    pairs.dt.region[Destination.Mesozone %in% region.codes.meso, Destination.Region := region.name]
+    
+  } else if (all(c("Origin.FAFzone", "Destination.FAFzone") %in% colnames(pairs.dt))) {
+    # Select all pairs that involve the chosen region
+    pairs.dt.region <- pairs.dt[Origin.FAFzone %in% region.codes.FAF | Destination.FAFzone %in% region.codes.FAF]
+    
+    # Perform regionaliztion by FAFzone
+    pairs.dt.region[Origin.FAFzone %in% region.codes.FAF & Destination.FAFzone %in% region.codes.FAF, Move.Type:="Within"]
+    pairs.dt.region[Origin.FAFzone %in% region.codes.FAF & !(Destination.FAFzone %in% region.codes.FAF), Move.Type:="Outbound"]
+    pairs.dt.region[!(Origin.FAFzone %in% region.codes.FAF) & Destination.FAFzone %in% region.codes.FAF, Move.Type:="Inbound"]
+    pairs.dt.region[Origin.FAFzone %in% region.codes.FAF, Origin.Region := region.name]
+    pairs.dt.region[Destination.FAFzone %in% region.codes.FAF, Destination.Region := region.name]
+  }
+  
+  return(pairs.dt.region)
+}
+
+```
+
+```{r calling data prep functions, results='hide'}
+#### Load data
+invisible(gc())
+
+table.stack <- data.table()
+if (include.model) {
+  for (i in 1:length(params$model.run.names)) {
+    run.name <- params$model.run.names[i]
+    data.loc <- file.path(SYSTEM_APP_PATH, "scenarios", run.name, "outputs", SYSTEM_SCM_OUTPUTNAME)
+    #skim.loc <- paste0("../scenarios/", run.name, "/inputs/data_modepath_miles.csv")
+    skim.loc <- file.path(SYSTEM_APP_PATH, "lib", "data", "data_modepath_miles.csv")
+    #mode.loc <- paste0("../scenarios/", run.name, "/inputs/data_mode_description.csv")
+    mode.loc <- file.path(SYSTEM_APP_PATH, "lib", "data", "data_mode_description.csv")
+    
+    load(data.loc)
+    
+    dt <- prepDashModelData(model.dt = sc_sim_results$BuyerSupplierPairs, 
+                            skim.loc = skim.loc,
+                            mode.loc = mode.loc)
+    dt[, Table := run.name]
+    
+    table.stack <- rbind(table.stack, dt)
+    
+    rm(sc_sim_results, dt)
+    invisible(gc())
+    
+    if (i == 1) {primary.model.name <- run.name}
+  }
+}
+
+if (include.ref) {
+  dt <- prepDashFAFData(FAF.year)
+  dt[, Table := FAF.data.name]
+  
+  table.stack<- rbind(table.stack, dt, fill = TRUE)
+  
+  rm(dt)
+  invisible(gc())
+}
+
+table.stack[, Table := factor(Table, levels = c(FAF.data.name, params$model.run.names), ordered = TRUE)]
+table.stack.CMAP <- regionalize(pairs.dt = table.stack,
+                                region.name = "CMAP",
+                                region.codes.FAF = region.FAF.codes)
+
+names.tables <- table.stack[!duplicated(Table), .(Table)]
+```
+
+```{r load reference datasets, results='hide'}
+if (include.ref) {
+  ################## Waybill Rail Data -------------
+  #### Code to develop correspondence table between BEA zones and Regions
+  beacodes <- fread(file.path(SYSTEM_APP_PATH, "lib", "Dashboard", "BEAcodes.csv"),header = FALSE)
+  beacodes[,c("Code","Area"):=.(as.integer(substr(V1,1,3)),substr(V1,5,nchar(V1)))]
+  beacodes[,V1:=NULL]
+  setnames(beacodes,"V2","State")
+  beacodes[,nStates:=(nchar(State)+1)/3]
+  beacodes[,rowIndex:=.I]
+  beacodes <- beacodes[rep(rowIndex,nStates)]
+  beacodes[,c("nStates","rowIndex"):=NULL]
+  beacodes[,STATE:=strsplit(State,"-"),by=Code]
+  setkey(beacodes,Code)
+  
+  setkey(geoCorrespond, STATECODE)
+  beacodes[,c("Region","SubRegion"):=geoCorrespond[!duplicated(STATECODE)][beacodes[,.(STATE)],.(REGION,SUBREGION)]]
+  
+  # Get the codes that have multiple regions association
+  beacodesRegion <- unique(beacodes[,.(Code,Region)])
+  dup_codes <- beacodesRegion[,.N,by=Code][N>1,Code]
+  
+  # Select the regions that appears more time for a given BEA zone
+  select_region <- beacodes[.(dup_codes),.N,by=.(Code,Region)][,.(Region=Region[which.max(N)]),by=Code]
+  setkey(select_region,Code)
+  beacodesRegion[Code %in% dup_codes, Region:= select_region[beacodesRegion[Code %in% dup_codes],Region,on="Code"]]
+  beacodesRegion <- unique(beacodesRegion)
+  setkey(beacodesRegion,Code)
+  
+  #### Load Data
+  ## Reference table for Waybill
+  waybillReference <- read.csv(file.path(SYSTEM_APP_PATH, "lib", "Dashboard", "Dashboard_Reference_Data", "Waybill_Reference.csv"),stringsAsFactors = FALSE)
+  fixed_widths <- waybillReference$Number.of.Positions
+  column_names <- gsub(" ",".",waybillReference$Name)
+  column_types <- gsub("^N$","numeric",waybillReference$Form)
+  column_types <- gsub(".*A.*","character",column_types)
+  
+  
+  waybill <- data.table(laf_open_fwf(file.path(SYSTEM_APP_PATH, "lib", "Dashboard", "Dashboard_Reference_Data", "PUB14A.txt"),column_types = column_types, column_widths = fixed_widths, column_names = column_names)[,])
+  waybill[,Commodity.Code.STCC:=as.integer(gsub("(\\d+)\\d{3}","\\1",Commodity.Code..STCC.))]
+  
+  # Join the Region to Waybill Data.
+  waybill[,':='(O_region=beacodesRegion[.(Origin.BEA.Area),Region],
+                D_region=beacodesRegion[.(Termination.BEA.Area),Region])]
+  
+  # Filter waybill data to be domestic only
+  waybill.domestic <- waybill[All.Rail.Intermodal.Code==1 & Origin.BEA.Area > 0 & Origin.BEA.Area < 173 & Termination.BEA.Area > 0 & Termination.BEA.Area < 173]
+  # Assign RSG Rail Correspondence codes to each waybill
+  waybill.domestic[,c("Commodity.Cat.Code","Description"):=(stcc_to_correspond[.(Commodity.Code.STCC),.(Correspond,Description1)])]
+  # Calculate Tonmiles
+  waybill.domestic[, ':=' (Tons = Expanded.Tons*Tons.to.Thousand.Tons,
+                           Expanded.Tons = NULL)]
+  waybill.domestic[, Tonmiles := Tons*Estimated.Short.Line.Miles*1E-3]
+  setnames(waybill.domestic, c("O_region", "D_region"), c("Origin.Region", "Destination.Region"))
+  
+  
+  # Generate CMAP version of waybill data
+  waybill.domestic.CMAP <- waybill.domestic[Origin.BEA.Area %in% region.BEA.codes| Termination.BEA.Area %in% region.BEA.codes]
+  waybill.domestic.CMAP[Origin.BEA.Area %in% region.BEA.codes, Move.Type := "Outbound"]
+  waybill.domestic.CMAP[Termination.BEA.Area %in% region.BEA.codes, Move.Type := "Inbound"]
+  waybill.domestic.CMAP[Origin.BEA.Area %in% region.BEA.codes & Termination.BEA.Area %in% region.BEA.codes, Move.Type := "Within"]
+  
+  
+  # Prep data for use by buildValidateGraph()
+  waybill.graph <- waybill.domestic[, .(Origin.Region, Destination.Region, Commodity.Cat.Code, Tons, Tonmiles)]
+  waybill.graph[, ':=' (Table = "Waybill",
+                        Mode.Domestic = "Rail")]
+  waybill.graph.CMAP <- waybill.domestic.CMAP[, .(Origin.Region, Destination.Region, Commodity.Cat.Code, Tons, Tonmiles, Move.Type)]
+  waybill.graph.CMAP[, ':=' (Table = "Waybill",
+                             Mode.Domestic = "Rail")]
+
+  ################## T-100 Air Data ------------
+  # Note: T-100 data comes grouped by market and segment. Segment data describes
+  #   what happens between a single take-off and landing, while market data might
+  #   describe 1-8 take off and landing pairs (keeping the flight number constant.)
+  #   For our purposes, segment data was used. This makes the T100 data listed in
+  #   the graphs not entirely comparable with FAF data, which focuses on first origin,
+  #   last destination pairs.
+  
+  #### Load 2012 T-100 Segment data for domestic and international flights
+  T100 <- invisible(fread(file.path(SYSTEM_APP_PATH, "lib", "Dashboard", "Dashboard_Reference_Data", "751519515_T_T100_SEGMENT_ALL_CARRIER_2012_All.csv"), showProgress = FALSE))
+  T100 <- T100[ORIGIN_STATE_NM %in% geoCorrespond[,STATE] & DEST_STATE_NM %in% geoCorrespond[,STATE]]
+  # Sum freight for each airport, and simultaneously convert to tons from pounds
+  T100.airport <- T100[, .(Tons = sum(FREIGHT*lbstoTons*Tons.to.Thousand.Tons)), by = .(ORIGIN_AIRPORT_ID, DEST_AIRPORT_ID, ORIGIN_STATE_NM, DEST_STATE_NM, DISTANCE)]
+  T100.airport <- T100.airport[Tons > 0]
+  T100.airport[, Tonmiles := Tons*DISTANCE*1E-3]
+  
+  # Assign OD regions to each OD pair
+  setkey(geoCorrespond, STATE)
+  T100.airport[, Origin.Region := geoCorrespond[!duplicated(STATE)][.(ORIGIN_STATE_NM), REGION]]
+  T100.airport[, Destination.Region := geoCorrespond[!duplicated(STATE)][.(DEST_STATE_NM), REGION]]
+  T100.airport[, Commodity.Cat.Code := 0]
+  
+  ## Make a CMAP version of the T100 data
+  # CMAP airports include: Midway, O'Hare, Gary/Chicago, and Milwaukee/Mitchell. Source: Meso_Freight_Validation_Mar_29_2016_Run
+  CMAP.airports <- c(13232, 13930, 12055, 13342)
+  CMAP.fafzones <- c(171, 181)
+  T100.airport.CMAP <- T100.airport[ORIGIN_AIRPORT_ID %in% CMAP.airports| DEST_AIRPORT_ID %in% CMAP.airports]
+  T100.airport.CMAP[ORIGIN_AIRPORT_ID %in% CMAP.airports, Move.Type := "Outbound"]
+  T100.airport.CMAP[DEST_AIRPORT_ID %in% CMAP.airports, Move.Type := "Inbound"]
+  T100.airport.CMAP[ORIGIN_AIRPORT_ID %in% CMAP.airports & DEST_AIRPORT_ID %in% CMAP.airports, Move.Type := "Within"]
+  
+  
+  # Prep data for graphing in buildValidateGraph()
+  T100.graph <- T100.airport[, .(Origin.Region, Destination.Region, Commodity.Cat.Code, Tons, Tonmiles)]
+  T100.graph[, ':=' (Table = "T100",
+                     Mode.Domestic = "Air")]
+  T100.graph.CMAP <- T100.airport.CMAP[, .(Origin.Region, Destination.Region, Commodity.Cat.Code, Tons, Tonmiles, Move.Type)]
+  T100.graph.CMAP[, ':=' (Table = "T100",
+                          Mode.Domestic = "Air")]
+
+  ################## Waterborne Commerce Data ------------
+  #### Read Waterborne Commerce (WC) data
+  # Note: If there are errors with TONS being of character format, use Excel to change formats,
+  #       then save the .csv again.
+  WC.state.to.state <- fread(file.path(SYSTEM_APP_PATH, "lib", "Dashboard", "Dashboard_Reference_Data", "pdstate15.csv"))
+  WC.state.to.state[, TONS := as.numeric(TONS)] # Set tons column to be type numeric
+  
+  # Assign states and regions to WC data
+  setkey(geoCorrespond, STATECODE)
+  WC.state.to.state[,':='(Origin.State = geoCorrespond[!duplicated(STATECODE)][.(ORIGIN), STATE],
+                          Destination.State = geoCorrespond[!duplicated(STATECODE)][.(DESTINATION), STATE],
+                          Origin.Region = geoCorrespond[!duplicated(STATECODE)][.(ORIGIN), REGION],
+                          Destination.Region = geoCorrespond[!duplicated(STATECODE)][.(DESTINATION), REGION])]
+  
+  # Filter out non-domestic trades from WC data
+  WC.state.to.state <- WC.state.to.state[!(is.na(Origin.Region)|is.na(Destination.Region))]
+  # Assign water codes to WC data
+  water.commodity.codes.corresp.PDDB <- unique(water.commodity.codes[, .(Water_Code, PDDB_Code)])
+  setkey(water.commodity.codes.corresp.PDDB, PDDB_Code)
+  WC.state.to.state[, Commodity.Cat.Code := water.commodity.codes.corresp.PDDB[.(COMMODITY), Water_Code]]
+  # Assign dashboard units to WC data
+  WC.state.to.state[, ':=' (Tons = TONS * Tons.to.Thousand.Tons,
+                            TONS = NULL)]
+  
+  # Build CMAP version of data
+  CMAP.states <- c("Illinois", "Wisconsin", "Indiana")
+  WC.state.to.state.CMAP <- WC.state.to.state[Origin.State %in% CMAP.states | Destination.State %in% CMAP.states]
+  WC.state.to.state.CMAP[Origin.State %in% CMAP.states, Move.Type := "Outbound"]
+  WC.state.to.state.CMAP[Destination.State %in% CMAP.states, Move.Type := "Inbound"]
+  WC.state.to.state.CMAP[Origin.State %in% CMAP.states & Destination.State %in% CMAP.states, Move.Type := "Within"]
+  
+  # Prep data for graphing, both non-CMAP and CMAP versions
+  WC.graph <- WC.state.to.state[, .(Origin.Region, Destination.Region, Commodity.Cat.Code, Tons)]
+  WC.graph[, Table := "Waterborne Commerce"]
+  WC.graph[, ':=' (Table = "Waterborne Commerce",
+                   Mode.Domestic = "Water")]
+  WC.graph.CMAP <- WC.state.to.state.CMAP[, .(Origin.Region, Destination.Region, Commodity.Cat.Code, Tons, Move.Type)]
+  WC.graph.CMAP[, ':=' (Table = "Waterborne Commerce",
+                        Mode.Domestic = "Water")]
+}
+```
+
+```{r build stacked tables for reference data, results='hide'}
+invisible({
+  #### Subset and assign commodity codes to model and FAF data
+  table.stack.rail <- table.stack[Trade.Type == "Domestic" & Mode.Domestic == "Rail"]
+  table.stack.rail[, Commodity.Cat.Code := sctg_to_correspond[table.stack.rail[,.(SCTG)], Correspond]]
+  
+  table.stack.air <- table.stack[Trade.Type == "Domestic" & Mode.Domestic == "Air"]
+  table.stack.air[, Commodity.Cat.Code := 0]
+  
+  table.stack.water <- table.stack[Trade.Type == "Domestic" & Mode.Domestic == "Water"]
+  # Assigning water codes to table.stack.water
+  water.commodity.codes.corresp.SCTG <- unique(water.commodity.codes[,.(Water_Code, SCTG_Code, Water_Description)])
+  setkey(water.commodity.codes.corresp.SCTG, "SCTG_Code")
+  table.stack.water[, Commodity.Cat.Code := water.commodity.codes.corresp.SCTG[.(SCTG), Water_Code]]
+})
+
+table.stack.ref <- rbind(table.stack.air, table.stack.rail, table.stack.water)
+table.stack.CMAP.ref <- regionalize(pairs.dt = table.stack.ref, region.name = "CMAP", region.codes.FAF = region.FAF.codes)
+
+
+#### Bind together reference datasets and FAF and model datasets
+if (include.ref) {
+  ref.stack <- rbind(T100.graph, waybill.graph, WC.graph, fill = TRUE)
+  rm(T100.graph, waybill.graph, WC.graph)
+  ref.stack.CMAP <- rbind(T100.graph.CMAP, waybill.graph.CMAP, WC.graph.CMAP, fill = TRUE)
+  rm(T100.graph.CMAP, waybill.graph.CMAP, WC.graph.CMAP)
+  
+  table.stack.ref <- table.stack.ref[, .(Origin.Region, Destination.Region, Mode.Domestic, Commodity.Cat.Code, Tons, Tonmiles, Values, Table)]
+  table.stack.CMAP.ref <- table.stack.CMAP.ref[, .(Origin.Region, Destination.Region, Mode.Domestic, Move.Type, Commodity.Cat.Code, Tons, Tonmiles, Values, Table)]
+  
+  table.stack.ref <- rbind(table.stack.ref, ref.stack, fill = TRUE)
+  table.stack.CMAP.ref <- rbind(table.stack.CMAP.ref, ref.stack.CMAP, fill = TRUE)
+  rm(ref.stack, ref.stack.CMAP)
+}
+
+# Preparing consistent color scheme for each data source
+data.colors <- generateDataColors(table.nms = names.tables,
+                                  ref.table = table.stack.ref)
+```
+
+
+Overview
+============================================
+
+Summary {data-width=200}
+--------------------------------------------
+
+### About this Document
+
+This document is stand-alone interactive dashboard viewable from most modern Internet browsers. The dashboard is meant to be a high-level summary of an __rFreight__ scenario. All of the data, charts, and maps viewable in this dashboard are embedded directly into the HTML file, so users are encouraged to share their scenario results with others via this document. An Internet connection is necessary for the best user experience, but is not required.
+
+This document is best viewed using the most recent versions of the following web browsers:
+
+* [Google Chrome](https://www.google.com/chrome/browser/desktop/)
+* [Mozilla Firefox](https://www.mozilla.org/en-US/firefox/new/)
+* [Microsoft Internet Explorer](https://www.microsoft.com/en-us/download/internet-explorer.aspx)
+
+Users may navigate to different areas of the dashboard using the navigation bar at the top of the page.
+
+Please note that the following units are used throughout the dashboard:
+
+* Thousands (1,000's) of tons
+* Millions (1,000,000's) of ton-miles
+* Millions (1,000,000's) of US dollars
+
+Highlights {data-width=150}
+--------------------------------------------
+
+### Run Date
+
+```{r Run_Date_ValueBox}
+valueBox(Sys.Date(), "Dashboard Run Date", icon = "fa-calendar")
+```
+
+
+
+
+
+Movement Type Charts {data-navmenu="CMAP" data-width=600}
+============================================
+
+Domestic Bar Charts {.tabset .tabset-fade}
+-----------------------------------
+
+### Domestic Flows Ton-miles
+```{r comparisonPlotDomesticTonmiles, fig.width=9, fig.asp=0.8}
+buildValidateGraph(data.stacked = table.stack.CMAP[Trade.Type == "Domestic"],
+                   result.measure = "Tonmiles",
+                   geographic.aggr = "cmap",
+                   x.cat = "Mode.Domestic",
+                   x.label = "Domestic Mode",
+                   chart.type = "bar")
+```
+
+### Domestic Flows Tons
+```{r comparisonPlotDomesticTons, fig.width=9, fig.asp=0.8}
+buildValidateGraph(data.stacked = table.stack.CMAP[Trade.Type == "Domestic"],
+                   result.measure = "Tons",
+                   geographic.aggr = "cmap",
+                   x.cat = "Mode.Domestic",
+                   x.label = "Domestic Mode",
+                   chart.type = "bar")
+```
+
+### Domestic Flows Values
+```{r comparisonPlotDomesticValues, fig.width=9, fig.asp=0.8}
+buildValidateGraph(data.stacked = table.stack.CMAP[Trade.Type == "Domestic"],
+                   result.measure = "Values",
+                   geographic.aggr = "cmap",
+                   x.cat = "Mode.Domestic",
+                   x.label = "Domestic Mode",
+                   chart.type = "bar")
+```
+
+
+
+
+Commodity Charts {data-navmenu="CMAP" .tabset .tabset-fade}
+===================================================================
+
+Domestic Commodity Flows Inbound CMAP {.tabset .tabset-fade}
+----------------------------------------------------------------
+
+### Ton-miles In
+```{r,echo=FALSE,fig.height=9}
+buildValidateGraph(data.stacked = table.stack.CMAP[Trade.Type == "Domestic" & Move.Type == "Inbound"],
+                   result.measure = "Tonmiles", 
+                   geographic.aggr = "commodity",
+                   x.cat = "SCTG", 
+                   x.label = "Commodity",
+                   chart.type = "bar")
+```
+
+### Tons In
+```{r,echo=FALSE,fig.height=9}
+buildValidateGraph(data.stacked = table.stack.CMAP[Trade.Type == "Domestic" & Move.Type == "Inbound"],
+                   result.measure = "Tons", 
+                   geographic.aggr = "commodity",
+                   x.cat = "SCTG", 
+                   x.label = "Commodity",
+                   chart.type = "bar")
+```
+
+### Values In
+```{r,echo=FALSE,fig.height=9}
+buildValidateGraph(data.stacked = table.stack.CMAP[Trade.Type == "Domestic" & Move.Type == "Inbound"],
+                   result.measure = "Values", 
+                   geographic.aggr = "commodity",
+                   x.cat = "SCTG", 
+                   x.label = "Commodity",
+                   chart.type = "bar")
+```
+
+
+Domestic Commodity Flows Outbound CMAP {.tabset .tabset-fade}
+----------------------------------------------------------------
+
+### Ton-miles Out
+```{r,echo=FALSE,fig.height=9}
+buildValidateGraph(data.stacked = table.stack.CMAP[Trade.Type == "Domestic" & Move.Type == "Outbound"],
+                   result.measure = "Tonmiles", 
+                   geographic.aggr = "commodity",
+                   x.cat = "SCTG", 
+                   x.label = "Commodity",
+                   chart.type = "bar")
+```
+
+### Tons Out
+```{r,echo=FALSE,fig.height=9}
+buildValidateGraph(data.stacked = table.stack.CMAP[Trade.Type == "Domestic" & Move.Type == "Outbound"],
+                   result.measure = "Tons", 
+                   geographic.aggr = "commodity",
+                   x.cat = "SCTG", 
+                   x.label = "Commodity",
+                   chart.type = "bar")
+```
+
+### Values Out
+```{r,echo=FALSE,fig.height=9}
+buildValidateGraph(data.stacked = table.stack.CMAP[Trade.Type == "Domestic" & Move.Type == "Outbound"],
+                   result.measure = "Values", 
+                   geographic.aggr = "commodity",
+                   x.cat = "SCTG", 
+                   x.label = "Commodity",
+                   chart.type = "bar")
+```
+
+Domestic Commodity Flow Tonmiles Within CMAP {.tabset .tabset-fade}
+----------------------------------------------------------------
+
+### Ton-miles Within
+```{r,echo=FALSE,fig.height=9}
+buildValidateGraph(data.stacked = table.stack.CMAP[Trade.Type == "Domestic" & Move.Type == "Within"],
+                   result.measure = "Tonmiles", 
+                   geographic.aggr = "commodity",
+                   x.cat = "SCTG", 
+                   x.label = "Commodity",
+                   chart.type = "bar")
+```
+
+### Tons Within
+```{r,echo=FALSE,fig.height=9}
+buildValidateGraph(data.stacked = table.stack.CMAP[Trade.Type == "Domestic" & Move.Type == "Within"],
+                   result.measure = "Tons", 
+                   geographic.aggr = "commodity",
+                   x.cat = "SCTG", 
+                   x.label = "Commodity",
+                   chart.type = "bar")
+```
+
+### Values Within
+```{r,echo=FALSE,fig.height=9}
+buildValidateGraph(data.stacked = table.stack.CMAP[Trade.Type == "Domestic" & Move.Type == "Within"],
+                   result.measure = "Values", 
+                   geographic.aggr = "commodity",
+                   x.cat = "SCTG", 
+                   x.label = "Commodity",
+                   chart.type = "bar")
+```
+
+
+
+
+Regional Flow Charts {data-navmenu="CMAP"}
+================================================
+
+Flows {data-height=550 .tabset .tabset-fade}
+----------------------------
+
+### Ton-miles
+```{r,echo=FALSE,fig.width=15, fig.asp=0.6}
+buildValidateGraph(data.stacked = table.stack.CMAP[Trade.Type=="Domestic"],
+                   result.measure = "Tonmiles",
+                   geographic.aggr = "regional.cmap",
+                   x.cat = "Mode.Domestic",
+                   x.label = "Domestic Mode",
+                   chart.type = "bar")
+```
+
+### Tons
+```{r,echo=FALSE,fig.width=15, fig.asp=0.6}
+buildValidateGraph(data.stacked = table.stack.CMAP[Trade.Type=="Domestic"],
+                   result.measure = "Tons",
+                   geographic.aggr = "regional.cmap",
+                   x.cat = "Mode.Domestic",
+                   x.label = "Domestic Mode",
+                   chart.type = "bar")
+```
+
+### Values
+```{r,echo=FALSE,fig.width=15, fig.asp=0.6}
+buildValidateGraph(data.stacked = table.stack.CMAP[Trade.Type=="Domestic"],
+                   result.measure = "Values",
+                   geographic.aggr = "regional.cmap",
+                   x.cat = "Mode.Domestic",
+                   x.label = "Domestic Mode",
+                   chart.type = "bar")
+
+```
+
+
+
+
+
+Commodity Tables {data-navmenu="CMAP" data-orientation=rows}
+==================================================
+
+Tons Table {data-height=1600 .tabset .tabset-fade}
+-------------------------------------------------
+
+```{r createTablesCMAPCommodity, echo=FALSE}
+if (include.model & include.ref) {
+  DomesticCMAPCommodityFlows <- table.stack.CMAP[Trade.Type == "Domestic" & Table %in% c(primary.model.name, FAF.data.name),
+                                                 .(Tons=sum(Tons),Tonmiles=sum(Tonmiles),Values=sum(Values)), 
+                                                 by=.(Move.Type,Mode.Domestic,SCTG,Table)][order(Move.Type,-Tons)]
+  DomesticCMAPCommodityFlows.T <- dcast(DomesticCMAPCommodityFlows,SCTG~Mode.Domestic+Move.Type+Table,value.var = "Tons")
+  DomesticCMAPCommodityFlows.V <- dcast(DomesticCMAPCommodityFlows,SCTG~Mode.Domestic+Move.Type+Table,value.var = "Values")
+  DomesticCMAPCommodityFlows.TM <- dcast(DomesticCMAPCommodityFlows,SCTG~Mode.Domestic+Move.Type+Table,value.var = "Tonmiles")
+}
+```
+
+```{r build sketchDomesticCMAPCommodity, results='hide'}
+if (include.model & include.ref) {
+  #### Produce DataTable container object
+  countMode <-  DomesticCMAPCommodityFlows[,.N,by=.(Mode.Domestic,Move.Type,Table)]
+  sketchDomesticCMAPCommodity <- with(tags,table(
+    thead(
+      tr(
+        th(colspan=1,rowspan=3,"SCTG"),
+        if ((value <- countMode[Mode.Domestic=="Truck",.N]) > 0) th(colspan = value,"Truck"),
+        if ((value <- countMode[Mode.Domestic=="Rail",.N]) > 0) th(colspan= value,"Rail"),
+        if ((value <- countMode[Mode.Domestic=="Water",.N]) > 0) th(colspan= value,"Water"),
+        if ((value <- countMode[Mode.Domestic=="Air",.N]) > 0) th(colspan= value,"Air"),
+        if ((value <- countMode[Mode.Domestic=="Multiple",.N]) > 0) th(colspan= value,"Multiple"),
+        if ((value <- countMode[Mode.Domestic=="Pipeline",.N]) > 0) th(colspan= value,"Pipeline"),
+        if((value <- countMode[Mode.Domestic=="Other",.N])>0)th(colspan=value ,"Other"),
+        if((value <- countMode[Mode.Domestic=="None",.N])>0)th(colspan=value ,"None")
+      ),
+      tr(
+        if ((value <- countMode[Mode.Domestic=="Truck"&Move.Type=="Inbound",.N]) > 0) th(colspan=value,"Inbound"),
+        if ((value <- countMode[Mode.Domestic=="Truck"&Move.Type=="Outbound",.N]) > 0) th(colspan=value,"Outbound"),
+        if ((value <- countMode[Mode.Domestic=="Truck"&Move.Type=="Within",.N]) > 0) th(colspan=value,"Within"),
+        if ((value <- countMode[Mode.Domestic=="Rail"&Move.Type=="Inbound",.N]) > 0) th(colspan=value,"Inbound"),
+        if ((value <- countMode[Mode.Domestic=="Rail"&Move.Type=="Outbound",.N]) > 0) th(colspan=value,"Outbound"),
+        if ((value <- countMode[Mode.Domestic=="Rail"&Move.Type=="Within",.N]) > 0) th(colspan=value,"Within"),
+        if ((value <- countMode[Mode.Domestic=="Water"&Move.Type=="Inbound",.N]) > 0) th(colspan=value,"Inbound"),
+        if ((value <- countMode[Mode.Domestic=="Water"&Move.Type=="Outbound",.N]) > 0) th(colspan=value,"Outbound"),
+        if ((value <- countMode[Mode.Domestic=="Water"&Move.Type=="Within",.N]) > 0) th(colspan=value,"Within"),
+        if ((value <- countMode[Mode.Domestic=="Air"&Move.Type=="Inbound",.N]) > 0)th(colspan=value,"Inbound"),
+        if ((value <- countMode[Mode.Domestic=="Air"&Move.Type=="Outbound",.N]) > 0)th(colspan=value,"Outbound"),
+        if ((value <- countMode[Mode.Domestic=="Air"&Move.Type=="Within",.N]) > 0)th(colspan=value,"Within"),
+        if ((value <- countMode[Mode.Domestic=="Multiple"&Move.Type=="Inbound",.N]) > 0) th(colspan=value,"Inbound"),
+        if ((value <- countMode[Mode.Domestic=="Multiple"&Move.Type=="Outbound",.N]) > 0) th(colspan=value,"Outbound"),
+        if ((value <- countMode[Mode.Domestic=="Multiple"&Move.Type=="Within",.N]) > 0) th(colspan=value,"Within"),
+        if ((value <- countMode[Mode.Domestic=="Pipeline"&Move.Type=="Inbound",.N]) > 0) th(colspan=value,"Inbound"),
+        if ((value <- countMode[Mode.Domestic=="Pipeline"&Move.Type=="Outbound",.N]) > 0) th(colspan=value,"Outbound"),
+        if ((value <- countMode[Mode.Domestic=="Pipeline"&Move.Type=="Within",.N]) > 0) th(colspan=value,"Within"),
+        if ((value <- countMode[Mode.Domestic=="Other"&Move.Type=="Inbound",.N]) > 0) th(colspan=value,"Inbound"),
+        if ((value <- countMode[Mode.Domestic=="Other"&Move.Type=="Outbound",.N]) > 0) th(colspan=value,"Outbound"),
+        if ((value <- countMode[Mode.Domestic=="Other"&Move.Type=="Within",.N]) > 0) th(colspan=value,"Within"),
+        if ((value <- countMode[Mode.Domestic=="None"&Move.Type=="Inbound",.N]) > 0) th(colspan=value,"Inbound"),
+        if ((value <- countMode[Mode.Domestic=="None"&Move.Type=="Outbound",.N]) > 0) th(colspan=value,"Outbound"),
+        if ((value <- countMode[Mode.Domestic=="None"&Move.Type=="Within",.N]) > 0) th(colspan=value,"Within")
+      ),
+      tr(
+        if ((value <- countMode[Mode.Domestic=="Truck"&Move.Type=="Inbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Truck"&Move.Type=="Inbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Truck"&Move.Type=="Outbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Truck"&Move.Type=="Outbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Truck"&Move.Type=="Within"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Truck"&Move.Type=="Within"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Rail"&Move.Type=="Inbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Rail"&Move.Type=="Inbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Rail"&Move.Type=="Outbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Rail"&Move.Type=="Outbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Rail"&Move.Type=="Within"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Rail"&Move.Type=="Within"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Water"&Move.Type=="Inbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Water"&Move.Type=="Inbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Water"&Move.Type=="Outbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Water"&Move.Type=="Outbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Water"&Move.Type=="Within"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Water"&Move.Type=="Within"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Air"&Move.Type=="Inbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Air"&Move.Type=="Inbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Air"&Move.Type=="Outbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Air"&Move.Type=="Outbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Air"&Move.Type=="Within"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Air"&Move.Type=="Within"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Multiple"&Move.Type=="Inbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Multiple"&Move.Type=="Inbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Multiple"&Move.Type=="Outbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Multiple"&Move.Type=="Outbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Multiple"&Move.Type=="Within"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Multiple"&Move.Type=="Within"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Pipeline"&Move.Type=="Inbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Pipeline"&Move.Type=="Inbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Pipeline"&Move.Type=="Outbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Pipeline"&Move.Type=="Outbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Pipeline"&Move.Type=="Within"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Pipeline"&Move.Type=="Within"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Other"&Move.Type=="Inbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Other"&Move.Type=="Inbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Other"&Move.Type=="Outbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Other"&Move.Type=="Outbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="Other"&Move.Type=="Within"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="Other"&Move.Type=="Within"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="None"&Move.Type=="Inbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="None"&Move.Type=="Inbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="None"&Move.Type=="Outbound"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="None"&Move.Type=="Outbound"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name),
+        if ((value <- countMode[Mode.Domestic=="None"&Move.Type=="Within"&Table==FAF.data.name,.N]) > 0) th(colspan=value,FAF.data.name),
+        if ((value <- countMode[Mode.Domestic=="None"&Move.Type=="Within"&Table==primary.model.name,.N]) > 0) th(colspan=value,primary.model.name)
+      )
+    )))
+}
+```
+
+### Ton-miles
+```{r, echo=FALSE}
+buildDataTable(data.formatted = DomesticCMAPCommodityFlows.TM, 
+               container.sketch = sketchDomesticCMAPCommodity, 
+               type.currency = FALSE)
+```
+
+### Tons
+```{r,echo=FALSE}
+buildDataTable(data.formatted = DomesticCMAPCommodityFlows.T, 
+               container.sketch = sketchDomesticCMAPCommodity, 
+               type.currency = FALSE)
+```
+
+### Values
+```{r,echo=FALSE}
+buildDataTable(data.formatted = DomesticCMAPCommodityFlows.V, 
+               container.sketch = sketchDomesticCMAPCommodity, 
+               type.currency = TRUE)
+```
+
+
+
+
+
+
+
+Movement Type Charts {data-navmenu="National"}
+==================================
+
+Domestic Flows {.tabset .tabset-fade}
+------------------------
+
+### Domestic Flows Ton-miles
+
+```{r comparisonPlotNationalTonmiles, fig.width=9, fig.asp=0.8}
+buildValidateGraph(data.stacked = table.stack[Trade.Type == "Domestic"],
+                   result.measure = "Tonmiles",
+                   geographic.aggr = "cmap",
+                   x.cat = "Mode.Domestic",
+                   x.label = "Domestic Mode",
+                   chart.type = "bar")
+```
+
+### Domestic Flows Tons
+
+```{r comparisonPlotNationalTons, fig.width=9, fig.asp=0.8}
+buildValidateGraph(data.stacked = table.stack[Trade.Type == "Domestic"],
+                   result.measure = "Tons",
+                   geographic.aggr = "cmap",
+                   x.cat = "Mode.Domestic",
+                   x.label = "Domestic Mode",
+                   chart.type = "bar")
+```
+
+### Domestic Flows Values
+
+```{r comparisonPlotNationalValues, fig.width=9, fig.asp=0.8}
+buildValidateGraph(data.stacked = table.stack[Trade.Type == "Domestic"],
+                   result.measure = "Values",
+                   geographic.aggr = "cmap",
+                   x.cat = "Mode.Domestic",
+                   x.label = "Domestic Mode",
+                   chart.type = "bar")
+```
+
+
+
+Commodity Charts {data-navmenu="National"}
+================================================
+
+Domestic Commodity Flow Ton-miles {.tabset .tabset-fade}
+-------------------------------------------------------------
+
+### Commodity Flows Within Zones
+```{r,echo=FALSE,fig.height=9}
+buildValidateGraph(data.stacked = table.stack[Trade.Type == "Domestic" & Move.Type == "Within Zones"],
+                   result.measure = "Tonmiles", 
+                   geographic.aggr = "commodity",
+                   x.cat = "SCTG", 
+                   x.label = "Commodity",
+                   chart.type = "bar")
+```
+
+### Commodity Flows Between Zones
+```{r,echo=FALSE,fig.height=9}
+buildValidateGraph(data.stacked = table.stack[Trade.Type == "Domestic" & Move.Type == "Between Zones"],
+                   result.measure = "Tonmiles", 
+                   geographic.aggr = "commodity",
+                   x.cat = "SCTG", 
+                   x.label = "Commodity",
+                   chart.type = "bar")
+```
+
+
+Domestic Commodity Flow Tons {.tabset .tabset-fade}
+-------------------------------------------------------------
+
+### Commodity Flows Within Zones
+```{r,echo=FALSE,fig.height=9}
+buildValidateGraph(data.stacked = table.stack[Trade.Type == "Domestic" & Move.Type == "Within Zones"],
+                   result.measure = "Tons", 
+                   geographic.aggr = "commodity",
+                   x.cat = "SCTG", 
+                   x.label = "Commodity",
+                   chart.type = "bar")
+```
+
+### Commodity Flows Between Zones
+```{r,echo=FALSE,fig.height=9}
+buildValidateGraph(data.stacked = table.stack[Trade.Type == "Domestic" & Move.Type == "Between Zones"],
+                   result.measure = "Tons", 
+                   geographic.aggr = "commodity",
+                   x.cat = "SCTG", 
+                   x.label = "Commodity",
+                   chart.type = "bar")
+```
+
+
+Domestic Commodity Flow Values {.tabset .tabset-fade}
+-------------------------------------------------------------
+
+### Commodity Flows Within Zones
+```{r,echo=FALSE,fig.height=9}
+buildValidateGraph(data.stacked = table.stack[Trade.Type == "Domestic" & Move.Type == "Within Zones"],
+                   result.measure = "Values", 
+                   geographic.aggr = "commodity",
+                   x.cat = "SCTG", 
+                   x.label = "Commodity",
+                   chart.type = "bar")
+```
+
+### Commodity Flows Between Zones
+```{r,echo=FALSE,fig.height=9}
+buildValidateGraph(data.stacked = table.stack[Trade.Type == "Domestic" & Move.Type == "Between Zones"],
+                   result.measure = "Values", 
+                   geographic.aggr = "commodity",
+                   x.cat = "SCTG", 
+                   x.label = "Commodity",
+                   chart.type = "bar")
+```
+
+
+
+Regional Flow Charts {data-navmenu="National"}
+===================================================
+
+Flows {data-height=550 .tabset .tabset-fade}
+----------------------------
+
+### Ton-miles
+```{r,echo=FALSE,fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack[Trade.Type=="Domestic"],
+                   result.measure = "Tonmiles",
+                   geographic.aggr = "regional",
+                   x.cat = "Mode.Domestic",
+                   x.label = "Domestic Mode",
+                   chart.type = "bar")
+```
+
+### Tons
+```{r,echo=FALSE, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack[Trade.Type=="Domestic"],
+                   result.measure = "Tons",
+                   geographic.aggr = "regional",
+                   x.cat = "Mode.Domestic",
+                   x.label = "Domestic Mode",
+                   chart.type = "bar")
+```
+
+### Values
+```{r,echo=FALSE, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack[Trade.Type=="Domestic"],
+                   result.measure = "Values",
+                   geographic.aggr = "regional",
+                   x.cat = "Mode.Domestic",
+                   x.label = "Domestic Mode",
+                   chart.type = "bar")
+```
+
+
+
+Commodity Tables {data-navmenu="National" data-orientation=rows}
+===============================================
+
+Tons Table {data-height=1600 .tabset .tabset-fade}
+-------------------------------------------------
+
+```{r,echo=FALSE}
+#### Domestic only flows
+if (include.model & include.ref) {
+  DomesticCommodityFlows <- table.stack[Trade.Type=="Domestic" & Table %in% c(primary.model.name, FAF.data.name),
+                                        .(Tons=sum(Tons),Tonmiles=sum(Tonmiles),Values=sum(Values)),
+                                        by=.(Move.Type,Mode.Domestic,SCTG,Table)][order(Move.Type,-Tons)]
+  DomesticCommodityFlows.T <- dcast(DomesticCommodityFlows,SCTG~Mode.Domestic+Move.Type+Table,value.var = "Tons")
+  DomesticCommodityFlows.V <- dcast(DomesticCommodityFlows,SCTG~Mode.Domestic+Move.Type+Table,value.var = "Values")
+  DomesticCommodityFlows.TM <- dcast(DomesticCommodityFlows,SCTG~Mode.Domestic+Move.Type+Table,value.var = "Tonmiles")
+}
+```
+
+```{r producing container sketch Domestic commodities, results='hide'}
+if (include.model & include.ref) {
+  countMode <-  DomesticCommodityFlows[Move.Type!="Total",.N,by=.(Mode.Domestic,Move.Type,Table)]
+  sketchDomesticCommodity <- with(tags,table(
+    thead(
+      tr(
+        th(colspan=1,rowspan=3,"SCTG"),
+        if((value <- countMode[Mode.Domestic=="Truck",.N])>0) th(colspan=value ,"Truck"),
+        if((value <- countMode[Mode.Domestic=="Rail",.N])>0)th(colspan=value ,"Rail"),
+        if((value <- countMode[Mode.Domestic=="Water",.N])>0)th(colspan=value ,"Water"),
+        if((value <- countMode[Mode.Domestic=="Air",.N])>0)th(colspan= value,"Air"),
+        if((value <- countMode[Mode.Domestic=="Multiple",.N])>0)th(colspan= value,"Multiple"),
+        if((value <- countMode[Mode.Domestic=="Pipeline",.N])>0)th(colspan= value,"Pipeline"),
+        if((value <- countMode[Mode.Domestic=="Other",.N])>0)th(colspan=value ,"Other"),
+        if((value <- countMode[Mode.Domestic=="None",.N])>0)th(colspan=value ,"None")
+      ),
+      tr(
+        if((value <- countMode[Mode.Domestic=="Truck"&Move.Type=="Within Zones",.N])>0)th(colspan=value,"Within Zones"),
+        if((value <- countMode[Mode.Domestic=="Truck"&Move.Type=="Between Zones",.N])>0)th(colspan=value,"Between Zones"),
+        if((value <- countMode[Mode.Domestic=="Rail"&Move.Type=="Within Zones",.N])>0)th(colspan=value,"Within Zones"),
+        if((value <- countMode[Mode.Domestic=="Rail"&Move.Type=="Between Zones",.N])>0)th(colspan=value,"Between Zones"),
+        if((value <- countMode[Mode.Domestic=="Water"&Move.Type=="Within Zones",.N])>0)th(colspan=value,"Within Zones"),
+        if((value <- countMode[Mode.Domestic=="Water"&Move.Type=="Between Zones",.N])>0)th(colspan=value,"Between Zones"),
+        if((value <- countMode[Mode.Domestic=="Air"&Move.Type=="Within Zones",.N])>0)th(colspan=value,"Within Zones"),
+        if((value <- countMode[Mode.Domestic=="Air"&Move.Type=="Between Zones",.N])>0)th(colspan=value,"Between Zones"),
+        if((value <- countMode[Mode.Domestic=="Multiple"&Move.Type=="Within Zones",.N])>0)th(colspan = value,"Within Zones"),
+        if((value <- countMode[Mode.Domestic=="Multiple"&Move.Type=="Between Zones",.N])>0)th(colspan = value,"Between Zones"),
+        if((value <- countMode[Mode.Domestic=="Pipeline"&Move.Type=="Within Zones",.N])>0)th(colspan = value,"Within Zones"),
+        if((value <- countMode[Mode.Domestic=="Pipeline"&Move.Type=="Between Zones",.N])>0)th(colspan = value,"Between Zones"),
+        if((value <- countMode[Mode.Domestic=="Other"&Move.Type=="Within Zones",.N])>0)th(colspan = value,"Within Zones"),
+        if((value <- countMode[Mode.Domestic=="Other"&Move.Type=="Between Zones",.N])>0)th(colspan = value,"Between Zones"),
+        if((value <- countMode[Mode.Domestic=="None"&Move.Type=="Within Zones",.N])>0)th(colspan = value,"Within Zones"),
+        if((value <- countMode[Mode.Domestic=="None"&Move.Type=="Between Zones",.N])>0)th(colspan = value,"Between Zones")
+      ),
+      tr(
+        if((value <- countMode[Mode.Domestic=="Truck"&Move.Type=="Within Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="Truck"&Move.Type=="Within Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name),
+        if((value <- countMode[Mode.Domestic=="Truck"&Move.Type=="Between Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="Truck"&Move.Type=="Between Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name),
+        if((value <- countMode[Mode.Domestic=="Rail"&Move.Type=="Within Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="Rail"&Move.Type=="Within Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name),
+        if((value <- countMode[Mode.Domestic=="Rail"&Move.Type=="Between Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="Rail"&Move.Type=="Between Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name),
+        if((value <- countMode[Mode.Domestic=="Water"&Move.Type=="Within Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="Water"&Move.Type=="Within Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name),
+        if((value <- countMode[Mode.Domestic=="Water"&Move.Type=="Between Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="Water"&Move.Type=="Between Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name),
+        if((value <- countMode[Mode.Domestic=="Air"&Move.Type=="Within Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="Air"&Move.Type=="Within Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name),
+        if((value <- countMode[Mode.Domestic=="Air"&Move.Type=="Between Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="Air"&Move.Type=="Between Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name),
+        if((value <- countMode[Mode.Domestic=="Multiple"&Move.Type=="Within Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="Multiple"&Move.Type=="Within Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name),
+        if((value <- countMode[Mode.Domestic=="Multiple"&Move.Type=="Between Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="Multiple"&Move.Type=="Between Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name),
+        if((value <- countMode[Mode.Domestic=="Pipeline"&Move.Type=="Within Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="Pipeline"&Move.Type=="Within Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name),
+        if((value <- countMode[Mode.Domestic=="Pipeline"&Move.Type=="Between Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="Pipeline"&Move.Type=="Between Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name),
+        if((value <- countMode[Mode.Domestic=="Other"&Move.Type=="Within Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="Other"&Move.Type=="Within Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name),
+        if((value <- countMode[Mode.Domestic=="Other"&Move.Type=="Between Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="Other"&Move.Type=="Between Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name),
+        if((value <- countMode[Mode.Domestic=="None"&Move.Type=="Within Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="None"&Move.Type=="Within Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name),
+        if((value <- countMode[Mode.Domestic=="None"&Move.Type=="Between Zones"&Table==FAF.data.name,.N])>0)th(colspan = value,FAF.data.name),
+        if((value <- countMode[Mode.Domestic=="None"&Move.Type=="Between Zones"&Table==primary.model.name,.N])>0)th(colspan = value,primary.model.name)
+      )
+    )))
+}
+```
+
+### Tonmiles
+```{r}
+buildDataTable(data.formatted = DomesticCommodityFlows.TM,
+               container.sketch = sketchDomesticCommodity)
+```
+
+### Tons
+```{r createTablesCommodity, echo=FALSE}
+buildDataTable(data.formatted = DomesticCommodityFlows.T,
+               container.sketch = sketchDomesticCommodity)
+```
+
+
+### Values
+```{r, echo=FALSE}
+buildDataTable(data.formatted = DomesticCommodityFlows.V,
+               container.sketch = sketchDomesticCommodity,
+               type.currency = TRUE)
+```
+
+
+Water {data-navmenu="Modes"}
+============================
+
+Correspondence Table {data-width=1}
+-------------------------
+
+### RSG Water Commodity Codes
+```{r}
+# Prepare the datatable
+WC.correspond <- water.commodity.codes.corresp.SCTG[, .(SCTG = paste(SCTG_Code, collapse = ", ")), by = .(Water_Code, Water_Description)]
+setkey(WC.correspond, "Water_Code")
+setnames(WC.correspond, c("Water_Code", "Water_Description", "SCTG"), c("RSG Water Code", "RSG Description", "SCTG Codes"))
+
+# Display the datatable
+datatable(WC.correspond,
+          rownames=FALSE,
+          extensions = 'FixedColumns',
+          options = list(sDom  = '<"top">lrt<"bottom">ip',
+                         fixedColumns = TRUE,
+                         autowidth = TRUE,
+                         bPaginate = FALSE,
+                         bFilter = FALSE,
+                         bInfo = FALSE,
+                         columnDefs = list(list(width = '20%')),
+                         searching=FALSE,
+                         paging=FALSE))
+```
+
+### Notes:
+The Waterborne Commerce data gives information on Tons, but not Tonmiles or Values.
+
+For the Waterborne Commerce data, the CMAP region was defined as including the states of Illinois, Indiana, and Wisconsin, because the data is reported as origin-destination pairs of states.
+
+See the User's Guide and Model Documentation for further information.
+
+
+Plots {data-width=2 .tabset .tabset-fade}
+-------------------------
+
+### National Tonshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Water"],
+                   result.measure = "Tonshare",
+                   geographic.aggr = "national",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Water Commodity Codes",
+                   chart.type = "line")
+```
+
+### National Tonmileshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Water"],
+                   result.measure = "Tonmileshare",
+                   geographic.aggr = "national",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Water Commodity Codes",
+                   chart.type = "line")
+```
+
+### National Valueshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Water"],
+                   result.measure = "Valueshare",
+                   geographic.aggr = "national",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Water Commodity Codes",
+                   chart.type = "line")
+```
+
+### Regional Tonshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Water"],
+                   result.measure = "Tonshare",
+                   geographic.aggr = "regional",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Water Commodity Codes",
+                   chart.type = "line")
+```
+
+### Regional Tonmileshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Water"],
+                   result.measure = "Tonmileshare",
+                   geographic.aggr = "regional",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Water Commodity Codes",
+                   chart.type = "line")
+```
+
+### Regional Valueshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Water"],
+                   result.measure = "Valueshare",
+                   geographic.aggr = "regional",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Water Commodity Codes",
+                   chart.type = "line")
+```
+
+### CMAP Tonshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.CMAP.ref[Mode.Domestic == "Water"],
+                   result.measure = "Tonshare",
+                   geographic.aggr = "cmap",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Water Commodity Codes",
+                   chart.type = "line")
+```
+
+### CMAP Tonmileshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.CMAP.ref[Mode.Domestic == "Water"],
+                   result.measure = "Tonmileshare",
+                   geographic.aggr = "cmap",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Water Commodity Codes",
+                   chart.type = "line")
+```
+
+### CMAP Valueshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.CMAP.ref[Mode.Domestic == "Water"],
+                   result.measure = "Valueshare",
+                   geographic.aggr = "cmap",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Water Commodity Codes",
+                   chart.type = "line")
+```
+
+
+Air {data-navmenu="Modes" .tabset .tabset-fade}
+============================
+
+Correspondence Table {data-width=1}
+-------------------------
+
+### Notes:
+
+T-100 Data does not differentiate by commodity, so all freight is lumped together in this section into a single group labelled "All".
+
+The T-100 data gives information on Tons and Tonmiles, but no information on Value.
+
+The T-100 data can be downloaded as segment data or market data. Segment data records each take-off and landing pair for every plane, while market data groups take-off and landing pairs together by flight number. As long as the flight number stays the same, the market does not change. This analysis used segment data. Since freight does not necessarily only travel on one segment, but might stay inside a plane for multiple segments, this data probably overestimates freight volumes, as comparisons to the FAF data clearly show.
+
+For the T-100 data, the CMAP area was defined as origins or destinations at any of the following airports: Midway, O'Hare, Gary/Chicago, and Milwaukee/Mitchell
+
+See the User's Guide and Model Documentation for further information.
+
+
+Plots {data-width=2 .tabset .tabset-fade}
+-------------------------
+
+### National Tons
+
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Air"],
+                   result.measure = "Tons",
+                   geographic.aggr = "national",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "All Commodities",
+                   chart.type = "bar")
+```
+
+### National Tonmiles
+
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Air"],
+                   result.measure = "Tonmiles",
+                   geographic.aggr = "national",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "All Commodities",
+                   chart.type = "bar")
+```
+
+### National Values
+
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Air"],
+                   result.measure = "Values",
+                   geographic.aggr = "national",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "All Commodities",
+                   chart.type = "bar")
+```
+
+### Regional Tons
+
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Air"],
+                   result.measure = "Tons",
+                   geographic.aggr = "regional",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "All Commodities",
+                   chart.type = "bar")
+```
+
+### Regional Tonmiles
+
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Air"],
+                   result.measure = "Tonmiles",
+                   geographic.aggr = "regional",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "All Commodities",
+                   chart.type = "bar")
+```
+
+### Regional Values
+
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Air"],
+                   result.measure = "Values",
+                   geographic.aggr = "regional",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "All Commodities",
+                   chart.type = "bar")
+```
+
+### CMAP Tons
+
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.CMAP.ref[Mode.Domestic == "Air"],
+                   result.measure = "Tons",
+                   geographic.aggr = "cmap",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "All Commodities",
+                   chart.type = "bar")
+```
+
+### CMAP Tonmiles
+
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.CMAP.ref[Mode.Domestic == "Air"],
+                   result.measure = "Tonmiles",
+                   geographic.aggr = "cmap",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "All Commodities",
+                   chart.type = "bar")
+
+### Note: I think that the plot looks so strange, with T100 giving such high
+###   values, because O'Hare is a massive hub, so lots of the air cargo is
+###   simply passing through CMAP, not staying.
+```
+
+### CMAP Values
+
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.CMAP.ref[Mode.Domestic == "Air"],
+                   result.measure = "Values",
+                   geographic.aggr = "cmap",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "All Commodities",
+                   chart.type = "bar")
+```
+
+Rail {data-navmenu="Modes" .tabset .tabset-fade}
+============================
+
+Correspondence Table {data-width=1}
+-------------------------
+
+### RSG Rail Commodity Codes
+```{r, echo=FALSE}
+### Build a correspondence table here for RSG Waybill Commodity Codes
+
+# Prepare the datatable
+waybill.correspond <- sctg_to_correspond[, .(SCTG = paste(SCTG, collapse = ", ")), by = .(Correspond, Description1)]
+setnames(waybill.correspond, c("Correspond", "Description1", "SCTG"), c("RSG Rail Code", "RSG Description", "SCTG Codes"))
+
+# Display the datatable
+datatable(waybill.correspond,
+          rownames=FALSE,
+          extensions = 'FixedColumns',
+          options = list(sDom  = '<"top">lrt<"bottom">ip',
+                         fixedColumns = TRUE,
+                         autowidth = TRUE,
+                         bPaginate = FALSE,
+                         bFilter = FALSE,
+                         bInfo = FALSE,
+                         columnDefs = list(list(width = '20%')),
+                         searching=FALSE,
+                         paging=FALSE))
+```
+
+### Notes:
+The Waybill data gives Tons and Tonmiles, but no data on Values.
+
+The Waybill data comes from the Public Use Waybill Sample distributed annually by the U.S. Surface Transportation Board. It is a stratified sample of carload waybills for all U.S. rail traffic. For the waybill data, the CMAP region was defined as BEA zone 64.
+
+See the User's Guide and Model Documentation for further information.
+
+
+Plots {data-width=2 .tabset .tabset-fade}
+-------------------------
+
+### National Tonshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Rail"],
+                   result.measure = "Tonshare",
+                   geographic.aggr = "national",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Rail Commodity Codes",
+                   chart.type = "line")
+```
+
+### National Tonmileshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Rail"],
+                   result.measure = "Tonmileshare",
+                   geographic.aggr = "national",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Rail Commodity Codes",
+                   chart.type = "line")
+```
+
+### National Valueshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Rail"],
+                   result.measure = "Valueshare",
+                   geographic.aggr = "national",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Rail Commodity Codes",
+                   chart.type = "line")
+```
+
+### Regional Tonshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Rail"],
+                   result.measure = "Tonshare",
+                   geographic.aggr = "regional",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Rail Commodity Codes",
+                   chart.type = "line")
+```
+
+### Regional Tonmileshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Rail"],
+                   result.measure = "Tonmileshare",
+                   geographic.aggr = "regional",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Rail Commodity Codes",
+                   chart.type = "line")
+```
+
+### Regional Valueshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.ref[Mode.Domestic == "Rail"],
+                   result.measure = "Valueshare",
+                   geographic.aggr = "regional",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Rail Commodity Codes",
+                   chart.type = "line")
+```
+
+### CMAP Tonshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.CMAP.ref[Mode.Domestic == "Rail"],
+                   result.measure = "Tonshare",
+                   geographic.aggr = "cmap",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Rail Commodity Codes",
+                   chart.type = "line")
+```
+
+### CMAP Tonmileshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.CMAP.ref[Mode.Domestic == "Rail"],
+                   result.measure = "Tonmileshare",
+                   geographic.aggr = "cmap",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Rail Commodity Codes",
+                   chart.type = "line")
+```
+
+### CMAP Valueshare
+```{r, fig.width=15, fig.asp=.6}
+buildValidateGraph(data.stacked = table.stack.CMAP.ref[Mode.Domestic == "Rail"],
+                   result.measure = "Valueshare",
+                   geographic.aggr = "cmap",
+                   x.cat = "Commodity.Cat.Code",
+                   x.label = "RSG Rail Commodity Codes",
+                   chart.type = "line")
+```

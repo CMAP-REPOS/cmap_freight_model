@@ -1,0 +1,468 @@
+FAFZONE,MESOZONE,CBPZONE,STATE,STATECODE,REGION,SUBREGION
+11,151,1,Alabama,AL,South,East South Central
+12,152,2,Alabama,AL,South,East South Central
+19,153,3,Alabama,AL,South,East South Central
+20,154,4,Alaska,AK,West,Pacific
+41,155,5,Arizona,AZ,West,Mountain
+42,156,6,Arizona,AZ,West,Mountain
+49,157,7,Arizona,AZ,West,Mountain
+50,158,8,Arkansas,AR,South,West South Central
+61,159,9,California,CA,West,Pacific
+62,160,10,California,CA,West,Pacific
+63,161,11,California,CA,West,Pacific
+64,162,12,California,CA,West,Pacific
+69,163,13,California,CA,West,Pacific
+81,164,14,Colorado,CO,West,Mountain
+89,165,15,Colorado,CO,West,Mountain
+91,166,16,Connecticut,CT,NorthEast,New England
+92,167,17,Connecticut,CT,NorthEast,New England
+99,168,18,Connecticut,CT,NorthEast,New England
+100,169,19,Delaware,DE,South,South Atlantic
+111,170,20,District of Columbia,DC,South,South Atlantic
+121,171,21,Florida,FL,South,South Atlantic
+122,172,22,Florida,FL,South,South Atlantic
+123,173,23,Florida,FL,South,South Atlantic
+124,174,24,Florida,FL,South,South Atlantic
+129,175,25,Florida,FL,South,South Atlantic
+131,176,26,Georgia,GA,South,South Atlantic
+132,177,27,Georgia,GA,South,South Atlantic
+139,178,28,Georgia,GA,South,South Atlantic
+151,179,29,Hawaii,HI,West,Pacific
+159,180,30,Hawaii,HI,West,Pacific
+160,181,31,Idaho,ID,West,Mountain
+171,1,17031,Illinois,IL,MidWest,East North Central
+171,2,17031,Illinois,IL,MidWest,East North Central
+171,3,17031,Illinois,IL,MidWest,East North Central
+171,4,17031,Illinois,IL,MidWest,East North Central
+171,5,17031,Illinois,IL,MidWest,East North Central
+171,6,17031,Illinois,IL,MidWest,East North Central
+171,7,17031,Illinois,IL,MidWest,East North Central
+171,8,17031,Illinois,IL,MidWest,East North Central
+171,9,17031,Illinois,IL,MidWest,East North Central
+171,10,17031,Illinois,IL,MidWest,East North Central
+171,11,17031,Illinois,IL,MidWest,East North Central
+171,12,17031,Illinois,IL,MidWest,East North Central
+171,13,17031,Illinois,IL,MidWest,East North Central
+171,14,17031,Illinois,IL,MidWest,East North Central
+171,15,17031,Illinois,IL,MidWest,East North Central
+171,16,17031,Illinois,IL,MidWest,East North Central
+171,17,17031,Illinois,IL,MidWest,East North Central
+171,18,17031,Illinois,IL,MidWest,East North Central
+171,19,17031,Illinois,IL,MidWest,East North Central
+171,20,17031,Illinois,IL,MidWest,East North Central
+171,21,17031,Illinois,IL,MidWest,East North Central
+171,22,17031,Illinois,IL,MidWest,East North Central
+171,23,17031,Illinois,IL,MidWest,East North Central
+171,24,17031,Illinois,IL,MidWest,East North Central
+171,25,17031,Illinois,IL,MidWest,East North Central
+171,26,17031,Illinois,IL,MidWest,East North Central
+171,27,17031,Illinois,IL,MidWest,East North Central
+171,28,17031,Illinois,IL,MidWest,East North Central
+171,29,17031,Illinois,IL,MidWest,East North Central
+171,30,17111,Illinois,IL,MidWest,East North Central
+171,31,17111,Illinois,IL,MidWest,East North Central
+171,32,17111,Illinois,IL,MidWest,East North Central
+171,33,17111,Illinois,IL,MidWest,East North Central
+171,34,17111,Illinois,IL,MidWest,East North Central
+171,35,17111,Illinois,IL,MidWest,East North Central
+171,36,17111,Illinois,IL,MidWest,East North Central
+171,37,17111,Illinois,IL,MidWest,East North Central
+171,38,17111,Illinois,IL,MidWest,East North Central
+171,39,17111,Illinois,IL,MidWest,East North Central
+171,40,17111,Illinois,IL,MidWest,East North Central
+171,41,17111,Illinois,IL,MidWest,East North Central
+171,42,17111,Illinois,IL,MidWest,East North Central
+171,43,17111,Illinois,IL,MidWest,East North Central
+171,44,17111,Illinois,IL,MidWest,East North Central
+171,45,17111,Illinois,IL,MidWest,East North Central
+171,46,17097,Illinois,IL,MidWest,East North Central
+171,47,17097,Illinois,IL,MidWest,East North Central
+171,48,17097,Illinois,IL,MidWest,East North Central
+171,49,17097,Illinois,IL,MidWest,East North Central
+171,50,17097,Illinois,IL,MidWest,East North Central
+171,51,17097,Illinois,IL,MidWest,East North Central
+171,52,17097,Illinois,IL,MidWest,East North Central
+171,53,17097,Illinois,IL,MidWest,East North Central
+171,54,17097,Illinois,IL,MidWest,East North Central
+171,55,17097,Illinois,IL,MidWest,East North Central
+171,56,17097,Illinois,IL,MidWest,East North Central
+171,57,17097,Illinois,IL,MidWest,East North Central
+171,58,17097,Illinois,IL,MidWest,East North Central
+171,59,17097,Illinois,IL,MidWest,East North Central
+171,60,17097,Illinois,IL,MidWest,East North Central
+171,61,17097,Illinois,IL,MidWest,East North Central
+171,62,17089,Illinois,IL,MidWest,East North Central
+171,63,17089,Illinois,IL,MidWest,East North Central
+171,64,17089,Illinois,IL,MidWest,East North Central
+171,65,17089,Illinois,IL,MidWest,East North Central
+171,66,17089,Illinois,IL,MidWest,East North Central
+171,67,17089,Illinois,IL,MidWest,East North Central
+171,68,17089,Illinois,IL,MidWest,East North Central
+171,69,17089,Illinois,IL,MidWest,East North Central
+171,70,17089,Illinois,IL,MidWest,East North Central
+171,71,17089,Illinois,IL,MidWest,East North Central
+171,72,17089,Illinois,IL,MidWest,East North Central
+171,73,17089,Illinois,IL,MidWest,East North Central
+171,74,17089,Illinois,IL,MidWest,East North Central
+171,75,17089,Illinois,IL,MidWest,East North Central
+171,76,17089,Illinois,IL,MidWest,East North Central
+171,77,17043,Illinois,IL,MidWest,East North Central
+171,78,17043,Illinois,IL,MidWest,East North Central
+171,79,17043,Illinois,IL,MidWest,East North Central
+171,80,17043,Illinois,IL,MidWest,East North Central
+171,81,17043,Illinois,IL,MidWest,East North Central
+171,82,17043,Illinois,IL,MidWest,East North Central
+171,83,17043,Illinois,IL,MidWest,East North Central
+171,84,17043,Illinois,IL,MidWest,East North Central
+171,85,17043,Illinois,IL,MidWest,East North Central
+171,86,17043,Illinois,IL,MidWest,East North Central
+171,87,17197,Illinois,IL,MidWest,East North Central
+171,88,17197,Illinois,IL,MidWest,East North Central
+171,89,17197,Illinois,IL,MidWest,East North Central
+171,90,17197,Illinois,IL,MidWest,East North Central
+171,91,17197,Illinois,IL,MidWest,East North Central
+171,92,17197,Illinois,IL,MidWest,East North Central
+171,93,17197,Illinois,IL,MidWest,East North Central
+171,94,17197,Illinois,IL,MidWest,East North Central
+171,95,17197,Illinois,IL,MidWest,East North Central
+171,96,17197,Illinois,IL,MidWest,East North Central
+171,97,17197,Illinois,IL,MidWest,East North Central
+171,98,17197,Illinois,IL,MidWest,East North Central
+171,99,17197,Illinois,IL,MidWest,East North Central
+171,100,17197,Illinois,IL,MidWest,East North Central
+171,101,17197,Illinois,IL,MidWest,East North Central
+171,102,17197,Illinois,IL,MidWest,East North Central
+171,103,17197,Illinois,IL,MidWest,East North Central
+171,104,17197,Illinois,IL,MidWest,East North Central
+171,105,17197,Illinois,IL,MidWest,East North Central
+171,106,17197,Illinois,IL,MidWest,East North Central
+171,107,17197,Illinois,IL,MidWest,East North Central
+171,108,17197,Illinois,IL,MidWest,East North Central
+171,109,17197,Illinois,IL,MidWest,East North Central
+171,110,17093,Illinois,IL,MidWest,East North Central
+171,111,17093,Illinois,IL,MidWest,East North Central
+171,112,17093,Illinois,IL,MidWest,East North Central
+171,113,17093,Illinois,IL,MidWest,East North Central
+171,114,17093,Illinois,IL,MidWest,East North Central
+171,115,17093,Illinois,IL,MidWest,East North Central
+171,116,17093,Illinois,IL,MidWest,East North Central
+171,117,17093,Illinois,IL,MidWest,East North Central
+171,118,17093,Illinois,IL,MidWest,East North Central
+171,119,17063,Illinois,IL,MidWest,East North Central
+171,121,17037,Illinois,IL,MidWest,East North Central
+171,122,17091,Illinois,IL,MidWest,East North Central
+172,183,33,Illinois,IL,MidWest,East North Central
+179,120,17007,Illinois,IL,MidWest,East North Central
+179,123,17201,Illinois,IL,MidWest,East North Central
+179,124,17141,Illinois,IL,MidWest,East North Central
+179,125,17103,Illinois,IL,MidWest,East North Central
+179,126,17099,Illinois,IL,MidWest,East North Central
+179,184,34,Illinois,IL,MidWest,East North Central
+181,127,18089,Indiana,IN,MidWest,East North Central
+181,128,18127,Indiana,IN,MidWest,East North Central
+181,129,18091,Indiana,IN,MidWest,East North Central
+181,185,35,Indiana,IN,MidWest,East North Central
+182,186,36,Indiana,IN,MidWest,East North Central
+189,187,37,Indiana,IN,MidWest,East North Central
+190,188,38,Iowa,IA,MidWest,West North Central
+201,189,39,Kansas,KS,MidWest,West North Central
+209,190,40,Kansas,KS,MidWest,West North Central
+211,191,41,Kentucky,KY,South,East South Central
+219,192,42,Kentucky,KY,South,East South Central
+221,193,43,Louisiana,LA,South,West South Central
+222,194,44,Louisiana,LA,South,West South Central
+223,195,45,Louisiana,LA,South,West South Central
+229,196,46,Louisiana,LA,South,West South Central
+230,197,47,Maine,ME,NorthEast,New England
+241,198,48,Maryland,MD,South,South Atlantic
+242,199,49,Maryland,MD,South,South Atlantic
+249,200,50,Maryland,MD,South,South Atlantic
+251,201,51,Massachusetts,MA,NorthEast,New England
+259,202,52,Massachusetts,MA,NorthEast,New England
+261,203,53,Michigan,MI,MidWest,East North Central
+262,204,54,Michigan,MI,MidWest,East North Central
+269,205,55,Michigan,MI,MidWest,East North Central
+271,206,56,Minnesota,MN,MidWest,West North Central
+279,207,57,Minnesota,MN,MidWest,West North Central
+280,208,58,Mississippi,MS,South,East South Central
+291,209,59,Missouri,MO,MidWest,West North Central
+292,210,60,Missouri,MO,MidWest,West North Central
+299,211,61,Missouri,MO,MidWest,West North Central
+300,212,62,Montana,MT,West,Mountain
+310,213,63,Nebraska,NE,MidWest,West North Central
+321,214,64,Nevada,NV,West,Mountain
+329,215,65,Nevada,NV,West,Mountain
+330,216,66,New Hampshire,NH,NorthEast,New England
+341,217,67,New Jersey,NJ,NorthEast,Middle Atlantic
+342,218,68,New Jersey,NJ,NorthEast,Middle Atlantic
+349,219,69,New Jersey,NJ,NorthEast,Middle Atlantic
+350,220,70,New Mexico,NM,West,Mountain
+361,221,71,New York,NY,NorthEast,Middle Atlantic
+362,222,72,New York,NY,NorthEast,Middle Atlantic
+363,223,73,New York,NY,NorthEast,Middle Atlantic
+364,224,74,New York,NY,NorthEast,Middle Atlantic
+369,225,75,New York,NY,NorthEast,Middle Atlantic
+371,226,76,North Carolina,NC,South,South Atlantic
+372,227,77,North Carolina,NC,South,South Atlantic
+373,228,78,North Carolina,NC,South,South Atlantic
+379,229,79,North Carolina,NC,South,South Atlantic
+380,230,80,North Dakota,ND,MidWest,West North Central
+391,231,81,Ohio,OH,MidWest,East North Central
+392,232,82,Ohio,OH,MidWest,East North Central
+393,233,83,Ohio,OH,MidWest,East North Central
+394,234,84,Ohio,OH,MidWest,East North Central
+399,235,85,Ohio,OH,MidWest,East North Central
+401,236,86,Oklahoma,OK,South,West South Central
+402,237,87,Oklahoma,OK,South,West South Central
+409,238,88,Oklahoma,OK,South,West South Central
+411,239,89,Oregon,OR,West,Pacific
+419,240,90,Oregon,OR,West,Pacific
+421,241,91,Pennsylvania,PA,NorthEast,Middle Atlantic
+422,242,92,Pennsylvania,PA,NorthEast,Middle Atlantic
+429,243,93,Pennsylvania,PA,NorthEast,Middle Atlantic
+440,244,94,Rhode Island,RI,NorthEast,New England
+451,245,95,South Carolina,SC,South,South Atlantic
+452,246,96,South Carolina,SC,South,South Atlantic
+459,247,97,South Carolina,SC,South,South Atlantic
+460,248,98,South Dakota,SD,MidWest,West North Central
+471,249,99,Tennessee,TN,South,East South Central
+472,250,100,Tennessee,TN,South,East South Central
+479,251,101,Tennessee,TN,South,East South Central
+481,252,102,Texas,TX,South,West South Central
+482,253,103,Texas,TX,South,West South Central
+483,254,104,Texas,TX,South,West South Central
+484,255,105,Texas,TX,South,West South Central
+485,256,106,Texas,TX,South,West South Central
+486,257,107,Texas,TX,South,West South Central
+487,258,108,Texas,TX,South,West South Central
+488,259,109,Texas,TX,South,West South Central
+489,260,110,Texas,TX,South,West South Central
+491,261,111,Utah,UT,West,Mountain
+499,262,112,Utah,UT,West,Mountain
+500,263,113,Vermont,VT,NorthEast,New England
+511,264,114,Virginia,VA,South,South Atlantic
+512,265,115,Virginia,VA,South,South Atlantic
+513,266,116,Virginia,VA,South,South Atlantic
+519,267,117,Virginia,VA,South,South Atlantic
+531,268,118,Washington,WA,West,Pacific
+539,269,119,Washington,WA,West,Pacific
+540,270,120,West Virginia,WV,South,South Atlantic
+551,131,55101,Wisconsin,WI,MidWest,East North Central
+551,271,121,Wisconsin,WI,MidWest,East North Central
+559,130,55059,Wisconsin,WI,MidWest,East North Central
+559,132,55127,Wisconsin,WI,MidWest,East North Central
+559,272,122,Wisconsin,WI,MidWest,East North Central
+560,273,123,Wyoming,WY,West,Mountain
+801,310,160,NA,NA,NA,NA
+802,399,249,NA,NA,NA,NA
+803,279,129,NA,NA,NA,NA
+803,280,130,NA,NA,NA,NA
+803,281,131,NA,NA,NA,NA
+803,283,133,NA,NA,NA,NA
+803,287,137,NA,NA,NA,NA
+803,290,140,NA,NA,NA,NA
+803,293,143,NA,NA,NA,NA
+803,295,145,NA,NA,NA,NA
+803,297,147,NA,NA,NA,NA
+803,300,150,NA,NA,NA,NA
+803,302,152,NA,NA,NA,NA
+803,312,162,NA,NA,NA,NA
+803,315,165,NA,NA,NA,NA
+803,319,169,NA,NA,NA,NA
+803,323,173,NA,NA,NA,NA
+803,325,175,NA,NA,NA,NA
+803,332,182,NA,NA,NA,NA
+803,333,183,NA,NA,NA,NA
+803,334,184,NA,NA,NA,NA
+803,336,186,NA,NA,NA,NA
+803,341,191,NA,NA,NA,NA
+803,354,204,NA,NA,NA,NA
+803,355,205,NA,NA,NA,NA
+803,356,206,NA,NA,NA,NA
+803,359,209,NA,NA,NA,NA
+803,360,210,NA,NA,NA,NA
+803,363,213,NA,NA,NA,NA
+803,373,223,NA,NA,NA,NA
+803,405,255,NA,NA,NA,NA
+803,414,264,NA,NA,NA,NA
+803,424,274,NA,NA,NA,NA
+803,426,276,NA,NA,NA,NA
+803,427,277,NA,NA,NA,NA
+803,438,288,NA,NA,NA,NA
+803,439,289,NA,NA,NA,NA
+803,440,290,NA,NA,NA,NA
+803,461,311,NA,NA,NA,NA
+803,474,324,NA,NA,NA,NA
+803,478,328,NA,NA,NA,NA
+803,484,334,NA,NA,NA,NA
+803,487,337,NA,NA,NA,NA
+804,275,125,NA,NA,NA,NA
+804,277,127,NA,NA,NA,NA
+804,285,135,NA,NA,NA,NA
+804,291,141,NA,NA,NA,NA
+804,292,142,NA,NA,NA,NA
+804,298,148,NA,NA,NA,NA
+804,304,154,NA,NA,NA,NA
+804,324,174,NA,NA,NA,NA
+804,328,178,NA,NA,NA,NA
+804,330,180,NA,NA,NA,NA
+804,339,189,NA,NA,NA,NA
+804,342,192,NA,NA,NA,NA
+804,344,194,NA,NA,NA,NA
+804,345,195,NA,NA,NA,NA
+804,350,200,NA,NA,NA,NA
+804,352,202,NA,NA,NA,NA
+804,353,203,NA,NA,NA,NA
+804,362,212,NA,NA,NA,NA
+804,364,214,NA,NA,NA,NA
+804,365,215,NA,NA,NA,NA
+804,370,220,NA,NA,NA,NA
+804,372,222,NA,NA,NA,NA
+804,382,232,NA,NA,NA,NA
+804,387,237,NA,NA,NA,NA
+804,388,238,NA,NA,NA,NA
+804,389,239,NA,NA,NA,NA
+804,395,245,NA,NA,NA,NA
+804,401,251,NA,NA,NA,NA
+804,402,252,NA,NA,NA,NA
+804,404,254,NA,NA,NA,NA
+804,412,262,NA,NA,NA,NA
+804,419,269,NA,NA,NA,NA
+804,430,280,NA,NA,NA,NA
+804,431,281,NA,NA,NA,NA
+804,434,284,NA,NA,NA,NA
+804,435,285,NA,NA,NA,NA
+804,442,292,NA,NA,NA,NA
+804,446,296,NA,NA,NA,NA
+804,451,301,NA,NA,NA,NA
+804,452,302,NA,NA,NA,NA
+804,458,308,NA,NA,NA,NA
+804,463,313,NA,NA,NA,NA
+804,464,314,NA,NA,NA,NA
+804,469,319,NA,NA,NA,NA
+804,481,331,NA,NA,NA,NA
+804,483,333,NA,NA,NA,NA
+805,276,126,NA,NA,NA,NA
+805,278,128,NA,NA,NA,NA
+805,294,144,NA,NA,NA,NA
+805,299,149,NA,NA,NA,NA
+805,305,155,NA,NA,NA,NA
+805,306,156,NA,NA,NA,NA
+805,307,157,NA,NA,NA,NA
+805,309,159,NA,NA,NA,NA
+805,311,161,NA,NA,NA,NA
+805,313,163,NA,NA,NA,NA
+805,314,164,NA,NA,NA,NA
+805,320,170,NA,NA,NA,NA
+805,321,171,NA,NA,NA,NA
+805,329,179,NA,NA,NA,NA
+805,331,181,NA,NA,NA,NA
+805,335,185,NA,NA,NA,NA
+805,337,187,NA,NA,NA,NA
+805,338,188,NA,NA,NA,NA
+805,340,190,NA,NA,NA,NA
+805,346,196,NA,NA,NA,NA
+805,347,197,NA,NA,NA,NA
+805,348,198,NA,NA,NA,NA
+805,351,201,NA,NA,NA,NA
+805,357,207,NA,NA,NA,NA
+805,358,208,NA,NA,NA,NA
+805,361,211,NA,NA,NA,NA
+805,377,227,NA,NA,NA,NA
+805,384,234,NA,NA,NA,NA
+805,385,235,NA,NA,NA,NA
+805,386,236,NA,NA,NA,NA
+805,390,240,NA,NA,NA,NA
+805,391,241,NA,NA,NA,NA
+805,394,244,NA,NA,NA,NA
+805,397,247,NA,NA,NA,NA
+805,398,248,NA,NA,NA,NA
+805,406,256,NA,NA,NA,NA
+805,407,257,NA,NA,NA,NA
+805,409,259,NA,NA,NA,NA
+805,415,265,NA,NA,NA,NA
+805,416,266,NA,NA,NA,NA
+805,433,283,NA,NA,NA,NA
+805,436,286,NA,NA,NA,NA
+805,437,287,NA,NA,NA,NA
+805,443,293,NA,NA,NA,NA
+805,445,295,NA,NA,NA,NA
+805,447,297,NA,NA,NA,NA
+805,448,298,NA,NA,NA,NA
+805,454,304,NA,NA,NA,NA
+805,455,305,NA,NA,NA,NA
+805,460,310,NA,NA,NA,NA
+805,462,312,NA,NA,NA,NA
+805,467,317,NA,NA,NA,NA
+805,471,321,NA,NA,NA,NA
+805,475,325,NA,NA,NA,NA
+805,480,330,NA,NA,NA,NA
+805,490,340,NA,NA,NA,NA
+805,491,341,NA,NA,NA,NA
+806,274,124,NA,NA,NA,NA
+806,282,132,NA,NA,NA,NA
+806,286,136,NA,NA,NA,NA
+806,288,138,NA,NA,NA,NA
+806,289,139,NA,NA,NA,NA
+806,296,146,NA,NA,NA,NA
+806,301,151,NA,NA,NA,NA
+806,327,177,NA,NA,NA,NA
+806,349,199,NA,NA,NA,NA
+806,366,216,NA,NA,NA,NA
+806,368,218,NA,NA,NA,NA
+806,369,219,NA,NA,NA,NA
+806,371,221,NA,NA,NA,NA
+806,375,225,NA,NA,NA,NA
+806,376,226,NA,NA,NA,NA
+806,379,229,NA,NA,NA,NA
+806,380,230,NA,NA,NA,NA
+806,383,233,NA,NA,NA,NA
+806,393,243,NA,NA,NA,NA
+806,411,261,NA,NA,NA,NA
+806,420,270,NA,NA,NA,NA
+806,421,271,NA,NA,NA,NA
+806,423,273,NA,NA,NA,NA
+806,432,282,NA,NA,NA,NA
+806,444,294,NA,NA,NA,NA
+806,459,309,NA,NA,NA,NA
+806,465,315,NA,NA,NA,NA
+806,466,316,NA,NA,NA,NA
+806,476,326,NA,NA,NA,NA
+806,477,327,NA,NA,NA,NA
+806,482,332,NA,NA,NA,NA
+806,485,335,NA,NA,NA,NA
+806,489,339,NA,NA,NA,NA
+807,316,166,NA,NA,NA,NA
+807,374,224,NA,NA,NA,NA
+807,403,253,NA,NA,NA,NA
+807,418,268,NA,NA,NA,NA
+807,456,306,NA,NA,NA,NA
+808,284,134,NA,NA,NA,NA
+808,303,153,NA,NA,NA,NA
+808,308,158,NA,NA,NA,NA
+808,317,167,NA,NA,NA,NA
+808,318,168,NA,NA,NA,NA
+808,322,172,NA,NA,NA,NA
+808,343,193,NA,NA,NA,NA
+808,367,217,NA,NA,NA,NA
+808,378,228,NA,NA,NA,NA
+808,381,231,NA,NA,NA,NA
+808,392,242,NA,NA,NA,NA
+808,396,246,NA,NA,NA,NA
+808,400,250,NA,NA,NA,NA
+808,410,260,NA,NA,NA,NA
+808,413,263,NA,NA,NA,NA
+808,417,267,NA,NA,NA,NA
+808,422,272,NA,NA,NA,NA
+808,425,275,NA,NA,NA,NA
+808,428,278,NA,NA,NA,NA
+808,429,279,NA,NA,NA,NA
+808,441,291,NA,NA,NA,NA
+808,449,299,NA,NA,NA,NA
+808,453,303,NA,NA,NA,NA
+808,468,318,NA,NA,NA,NA
+808,472,322,NA,NA,NA,NA
+808,473,323,NA,NA,NA,NA
+808,479,329,NA,NA,NA,NA
+808,486,336,NA,NA,NA,NA
+808,488,338,NA,NA,NA,NA

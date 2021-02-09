@@ -1,0 +1,1280 @@
+---
+title: "CMAP Firm Synthesis Summary" 
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: scroll
+    theme: yeti
+    source_code: embed
+    css: "CMAPDashboard.css"
+---
+
+```{r loadPackages,echo=FALSE, results='hide', warning=FALSE}
+SYSTEM_APP_PATH    <- getwd()
+opts_knit$set(root.dir = SYSTEM_APP_PATH)
+opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+```
+
+```{r Graphics Colors & Themes, results='hide'}
+# colors
+rsgcolordf <- data.frame(red=c(246,0,99,186,117,255,82),
+                         green=c(139,111,175,18,190,194,77),
+                         blue=c(31,161,94,34,233,14,133),
+                         colornames=c("orange","marine","leaf","cherry","sky","sunshine","violet"))
+
+# ggplot2 theme used throughout the dashboard
+theme_db <- theme_bw() +
+            theme(plot.margin = unit(c(10,10,20,10),"pt")) +
+            theme(strip.background = element_rect(fill = "white"))
+```
+
+Firm List
+============================================
+
+Summary {data-width=200}
+--------------------------------------------
+
+### About this Document
+
+This document is a summary of the Firm Synthesis outputs from the CMAP Freight Model
+
+### Run Date
+
+```{r Run_Date_ValueBox}
+valueBox(Sys.Date(), "Dashboard Run Date", icon = "fa-calendar")
+```
+
+### Firms
+
+```{r Number_Firms_ValueBox}
+valueBox(format(firms_sum$firms, big.mark = ","), "Number of Firms", icon = "fa-industry")
+```
+
+### Employment
+
+```{r Employment_ValueBox}
+valueBox(format(firms_sum$employment, big.mark = ","), "Total Employment", icon = "fa-users")
+```
+
+
+Column 2 {data-width=200}
+--------------------------------------------
+
+### Firm Size Category Boxplots
+
+```{r sizecat_boxplots}
+# Organize
+dat <- rbind(FirmsDomesticUnscaled[,.(esizecat, Emp)][, Source := "Unscaled"],
+             FirmsDomestic[,.(esizecat, Emp)][, Source := "Scaled"])
+
+# Plot
+p <- ggplot(dat, aes(x = factor(esizecat), y = Emp)) +
+  geom_boxplot(position = "dodge", aes(color = Source)) + xlab("Size Category") +
+  scale_y_continuous(name = "Employment", labels = scales::comma) + 
+  theme(axis.ticks = element_blank(), legend.position="bottom")
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_emp_sizecat_boxplots.png"), width = 500, height = 400)
+# p
+# dev.off()
+```
+
+### Firms by Size Category (All Firms)
+
+```{r sizecat_barcharts}
+# Organize
+dat <- rbind(FirmsDomesticUnscaled[, .(Firms = .N), by = esizecat][, Source := "Unscaled"],
+             FirmsDomestic[, .(Firms = .N), by = esizecat][, Source := "Scaled"])
+
+# Plot
+p <- ggplot(data = dat, aes(factor(esizecat), Firms, fill = Source)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual("Source", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255)) +
+  xlab("Size Category") +
+  scale_y_continuous(name = "Number of Firms (All Firms)", labels = scales::comma) +
+  theme(axis.ticks = element_blank(), legend.position="bottom")
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_firms_by_sizecat_all.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_firms_by_sizecat.csv"), row.names = FALSE )
+
+```
+
+### Firms by Size Category (Chicago Region)
+
+```{r sizecat_barcharts_region}
+
+# Organize
+dat <- rbind(FirmsDomesticUnscaled[MESOZONE < 150, .(Firms = .N), by = esizecat][, Source := "Unscaled"],
+             FirmsDomestic[MESOZONE < 150, .(Firms = .N), by = esizecat][, Source := "Scaled"])
+
+# Plot
+p <- ggplot(data = dat, aes(factor(esizecat), Firms, fill = Source)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual("Source", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255)) +
+  xlab("Size Category") +
+  scale_y_continuous(name = "Number of Firms (Chicago Region Only)", labels = scales::comma) +
+  theme(axis.ticks = element_blank(), legend.position="bottom")
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_firms_by_sizecat_regional.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_firms_by_sizecat_regional.csv"), row.names = FALSE )
+
+```
+
+### Employment by Size Category (All Firms)
+
+```{r sizecat_emp_barcharts}
+
+# Organize
+dat <- rbind(FirmsDomesticUnscaled[, .(Employment = sum(Emp)), by = esizecat][, Source := "Unscaled"],
+             FirmsDomestic[, .(Employment = sum(Emp)), by = esizecat][, Source := "Scaled"])
+
+# Plot
+p <- ggplot(data = dat, aes(factor(esizecat), Employment, fill = Source)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual("Source", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255)) +
+  xlab("Size Category") +
+  scale_y_continuous(name = "Employment (All Firms)", labels = scales::comma) +
+  theme(axis.ticks = element_blank(), legend.position="bottom")
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_employment_by_sizecat.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_employment_by_sizecat.csv"), row.names = FALSE )
+
+```
+
+### Employment by Size Category (Chicago Region)
+
+```{r sizecat_emp_barcharts_region}
+
+# Organize
+dat <- rbind(FirmsDomesticUnscaled[MESOZONE < 150, .(Employment = sum(Emp)), by = esizecat][, Source := "Unscaled"],
+             FirmsDomestic[MESOZONE < 150, .(Employment = sum(Emp)), by = esizecat][, Source := "Scaled"])
+
+# Plot
+p <- ggplot(data = dat, aes(factor(esizecat), Employment, fill = Source)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual("Source", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255)) +
+  xlab("Size Category") +
+  scale_y_continuous(name = "Employment (Chicago Region Only)", labels = scales::comma) +
+  theme(axis.ticks = element_blank(), legend.position="bottom")
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_employment_by_sizecat_regional.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_employment_by_sizecat_regional.csv"), row.names = FALSE )
+
+```
+
+Column 3 {data-width=200}
+--------------------------------------------
+
+### Employment by Industry Unscaled (All Firms)
+
+```{r scaling_scatterplots_unscaled_all}
+
+# Organize
+dat <- merge(emp_control[,.(MESOZONE, n2, Employees.SE)],
+             FirmsDomesticUnscaled[, .(Employees.CBP = sum(Emp)), by = .(MESOZONE, n2 = as.integer(n2))],
+             by = c("MESOZONE", "n2"), all = TRUE)
+dat[is.na(Employees.CBP), Employees.CBP := 0]
+dat[is.na(Employees.SE), Employees.SE := 0]
+
+# Plot
+p <- ggplot(data = dat, aes(x = Employees.SE, y = Employees.CBP)) +
+  geom_point() +
+  scale_y_continuous(name = "Employment in County Business Patterns", labels = scales::comma) +
+  scale_x_continuous(name = "Employment in Control Data", labels = scales::comma) +
+  geom_abline(intercept = 0, slope = 1) +
+  theme(axis.ticks = element_blank(), axis.text.x = element_text(angle = 90, hjust=0)) +
+  facet_wrap(~n2, ncol = 4)
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_emp_mesozone_before_scaling_all.png"), width = 600, height = 800)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_emp_mesozone_before_scaling_all.csv"), row.names = FALSE )
+
+```
+
+### Employment by Industry After Scaling (All Firms)
+
+```{r scaling_scatterplots_scaled_all}
+
+# Organize
+dat <- merge(emp_control[,.(MESOZONE, n2, Employees.SE)],
+             FirmsDomestic[, .(Employees.CBP = sum(Emp)), by = .(MESOZONE, n2 = as.integer(n2))],
+             by = c("MESOZONE", "n2"), all = TRUE)
+
+dat[is.na(Employees.CBP), Employees.CBP := 0]
+dat[is.na(Employees.SE), Employees.SE := 0]
+
+# Plot
+p <- ggplot(data = dat, aes(x = Employees.SE, y = Employees.CBP)) +
+  geom_point() +
+  scale_y_continuous(name = "Employment in County Business Patterns", labels = scales::comma) +
+  scale_x_continuous(name = "Employment in Control Data", labels = scales::comma) +
+  geom_abline(intercept = 0, slope = 1) +
+  theme(axis.ticks = element_blank(), axis.text.x = element_text(angle = 90, hjust=0)) +
+  facet_wrap(~n2, ncol = 4)
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_emp_mesozone_after_scaling_all.png"), width = 600, height = 800)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_emp_mesozone_after_scaling_all.csv"), row.names = FALSE )
+
+```
+
+### Employment by Industry Unscaled (Chicago Region)
+
+```{r scaling_scatterplots_unscaled}
+
+# Organize
+dat <- merge(emp_control[MESOZONE < 150,.(MESOZONE, n2, Employees.SE)],
+             FirmsDomesticUnscaled[MESOZONE < 150, .(Employees.CBP = sum(Emp)), by = .(MESOZONE, n2 = as.integer(n2))],
+             by = c("MESOZONE", "n2"), all = TRUE)
+dat[is.na(Employees.CBP), Employees.CBP := 0]
+dat[is.na(Employees.SE), Employees.SE := 0]
+
+# Plot
+p <- ggplot(data = dat, aes(x = Employees.SE, y = Employees.CBP)) +
+  geom_point() +
+  scale_y_continuous(name = "Employment in County Business Patterns", labels = scales::comma) +
+  scale_x_continuous(name = "Employment in Control Data", labels = scales::comma) +
+  geom_abline(intercept = 0, slope = 1) +
+  theme(axis.ticks = element_blank(), axis.text.x = element_text(angle = 90, hjust=0)) +
+  facet_wrap(~n2, ncol = 4)
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_emp_mesozone_before_scaling.png"), width = 600, height = 800)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_emp_mesozone_before_scaling.csv"), row.names = FALSE )
+
+```
+
+### Employment by Industry After Scaling (Chicago Region)
+
+```{r scaling_scatterplots_scaled}
+
+# Organize
+dat <- merge(emp_control[MESOZONE < 150,.(MESOZONE, n2, Employees.SE)],
+             FirmsDomestic[MESOZONE < 150, .(Employees.CBP = sum(Emp)), by = .(MESOZONE, n2 = as.integer(n2))],
+             by = c("MESOZONE", "n2"), all = TRUE)
+
+dat[is.na(Employees.CBP), Employees.CBP := 0]
+dat[is.na(Employees.SE), Employees.SE := 0]
+
+# Plot
+p <- ggplot(data = dat, aes(x = Employees.SE, y = Employees.CBP)) +
+  geom_point() +
+  scale_y_continuous(name = "Employment in County Business Patterns", labels = scales::comma) +
+  scale_x_continuous(name = "Employment in Control Data", labels = scales::comma) +
+  geom_abline(intercept = 0, slope = 1) +
+  theme(axis.ticks = element_blank(), axis.text.x = element_text(angle = 90, hjust=0)) +
+  facet_wrap(~n2, ncol = 4)
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_emp_mesozone_after_scaling.png"), width = 600, height = 800)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_emp_mesozone_after_scaling.csv"), row.names = FALSE )
+
+```
+
+
+Column 4 {data-width=200}
+--------------------------------------------
+
+###  Firms by Industry
+
+```{r industry_firms_barcharts}
+
+# Organize
+dat <- merge(FirmsDomestic[, .(Firms = .N), by = .(n2 = as.integer(n2))],
+             unique(c_n6_labels[,.(n2 = NAICS2, Industry = Label2Short)]),
+             by = "n2",
+             all.x = TRUE)[,.(Firms = sum(Firms)), by = Industry][order(Firms)]
+dat[, Industry := factor(Industry, levels = unique(Industry))]
+
+# Plot
+p <- ggplot(data = dat, aes(Industry, Firms)) +
+  geom_bar(stat = "identity", fill = rgb(rsgcolordf[c(2),],maxColorValue = 255)) +
+  xlab("Industry") +
+  scale_y_continuous(name = "Number of Firms", labels = scales::comma) +
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_firms_by_industry.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_firms_by_industry.csv"), row.names = FALSE )
+
+```
+
+###  Employment by Industry
+
+```{r industry_employment_barcharts}
+
+# Organize
+dat <- merge(FirmsDomestic[, .(Employment = sum(Emp)), by = .(n2 = as.integer(n2))],
+             unique(c_n6_labels[,.(n2 = NAICS2, Industry = Label2Short)]),
+             by = "n2",
+             all.x = TRUE)[,.(Employment = sum(Employment)), by = Industry][order(Employment)]
+dat[, Industry := factor(Industry, levels = unique(Industry))]
+
+# Plot
+p <- ggplot(data = dat, aes(Industry, Employment)) +
+  geom_bar(stat = "identity", fill = rgb(rsgcolordf[c(3),],maxColorValue = 255)) +
+  xlab("Industry") +
+  scale_y_continuous(name = "Employment", labels = scales::comma) +
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_employment_by_industry.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_employment_by_industry.csv"), row.names = FALSE )
+
+```
+
+###  Firms by Industry (Chicago)
+
+```{r industry_firms_barcharts_region}
+
+# Organize
+dat <- merge(FirmsDomestic[MESOZONE < 150, .(Firms = .N), by = .(n2 = as.integer(n2))],
+             unique(c_n6_labels[,.(n2 = NAICS2, Industry = Label2Short)]),
+             by = "n2",
+             all.x = TRUE)[,.(Firms = sum(Firms)), by = Industry][order(Firms)]
+dat[, Industry := factor(Industry, levels = unique(Industry))]
+
+# Plot
+p <- ggplot(data = dat, aes(Industry, Firms)) +
+  geom_bar(stat = "identity", fill = rgb(rsgcolordf[c(2),],maxColorValue = 255)) +
+  xlab("Industry") +
+  scale_y_continuous(name = "Number of Firms (Chicago Region Only)", labels = scales::comma) +
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_firms_by_industry_region.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_firms_by_industry_region.csv"), row.names = FALSE )
+
+```
+
+
+###  Employment by Industry (Chicago)
+
+```{r industry_employment_barcharts_region}
+
+# Organize
+dat <- merge(FirmsDomestic[MESOZONE < 150, .(Employment = sum(Emp)), by = .(n2 = as.integer(n2))],
+             unique(c_n6_labels[,.(n2 = NAICS2, Industry = Label2Short)]),
+             by = "n2",
+             all.x = TRUE)[,.(Employment = sum(Employment)), by = Industry][order(Employment)]
+dat[, Industry := factor(Industry, levels = unique(Industry))]
+
+# Plot
+p <- ggplot(data = dat, aes(Industry, Employment)) +
+  geom_bar(stat = "identity", fill = rgb(rsgcolordf[c(4),],maxColorValue = 255)) +
+  xlab("Industry") +
+  scale_y_continuous(name = "Employment (Chicago Region Only)", labels = scales::comma) +
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_employment_by_industry_regional.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_employment_by_industry_regional.csv"), row.names = FALSE )
+
+```
+
+Producers
+============================================
+
+Summary {data-width=200}
+--------------------------------------------
+
+### About this Document
+
+This document is a summary of the Firm Synthesis outputs from the CMAP Freight Model
+
+### Producers
+
+```{r Number_Producers_ValueBox}
+valueBox(format(firms_sum$producers, big.mark = ","), "Number of Producers", icon = "fa-industry")
+```
+
+### Production Capacity
+
+```{r Capacity_Producers_ValueBox}
+valueBox(format(firms_sum$producers_cap, big.mark = ",", scientific = FALSE), "Capacity at Producers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+### Production Capacity (Domestic, not including Wholesalers)
+
+```{r Capacity_Producers_Domestic_ValueBox}
+valueBox(format(producers[ProdType == 1, sum(OutputCapacityTons)], big.mark = ",", scientific = FALSE), "Capacity at Domestic Producers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+### Production Capacity (Foreign, producing imports)
+
+```{r Capacity_Producers_Foreign_ValueBox}
+valueBox(format(producers[ProdType == 2, sum(OutputCapacityTons)], big.mark = ",", scientific = FALSE), "Capacity at Foreign Producers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+### Production Capacity (Domestic Wholesalers)
+
+```{r Capacity_Producers_Wholesale_ValueBox}
+valueBox(format(producers[ProdType == 3, sum(OutputCapacityTons)], big.mark = ",", scientific = FALSE), "Capacity at Domestic Wholesalers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+Column 2 {data-width=200}
+--------------------------------------------
+
+###  Production by Commodity
+
+```{r production_commodity_barcharts}
+
+# Organize
+dat <- merge(producers[, .(Capacity = sum(OutputCapacityTons)), by = .(Commodity_SCTG, ProdType)],
+             unique(c_n6_n6io_sctg[,.(Commodity_SCTG, Commodity = Commodity_SCTG_desc)]),
+             by = "Commodity_SCTG",
+             all.x = TRUE)
+dat[, Commodity := factor(Commodity, levels = unique(dat[, .(Capacity = sum(Capacity)), by = Commodity][order(Capacity)]$Commodity))]
+
+# Plot
+p <- ggplot(data = dat, aes(Commodity, Capacity, fill = factor(ProdType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 3, 4),],maxColorValue = 255), labels = c("Domestic", "Foreign", "Wholesale")) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Capacity") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_by_commodity.csv"), row.names = FALSE )
+
+```
+
+###  Production by Commodity (Domestic)
+
+```{r production_domestic_commodity_barcharts}
+
+# Organize
+dat <- merge(producers[ProdType == 1, .(Capacity = sum(OutputCapacityTons)), by = Commodity_SCTG],
+             unique(c_n6_n6io_sctg[,.(Commodity_SCTG, Commodity = Commodity_SCTG_desc)]),
+             by = "Commodity_SCTG",
+             all.x = TRUE)[order(Capacity)]
+dat[, Commodity := factor(Commodity, levels = unique(Commodity))]
+
+# Plot
+p <- ggplot(data = dat, aes(Commodity, Capacity, fill = factor(ProdType))) +
+  geom_bar(stat = "identity", fill = rgb(rsgcolordf[c(2),],maxColorValue = 255)) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Capacity") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_domestic_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_domestic_by_commodity.csv"), row.names = FALSE )
+
+```
+
+###  Production by Commodity (Foreign)
+
+```{r production_foreign_commodity_barcharts}
+
+# Organize
+dat <- merge(producers[ProdType == 2, .(Capacity = sum(OutputCapacityTons)), by = Commodity_SCTG],
+             unique(c_n6_n6io_sctg[,.(Commodity_SCTG, Commodity = Commodity_SCTG_desc)]),
+             by = "Commodity_SCTG",
+             all.x = TRUE)[order(Capacity)]
+dat[, Commodity := factor(Commodity, levels = unique(Commodity))]
+
+# Plot
+p <- ggplot(data = dat, aes(Commodity, Capacity, fill = factor(ProdType))) +
+  geom_bar(stat = "identity", fill = rgb(rsgcolordf[c(3),],maxColorValue = 255)) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Capacity") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_foreign_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_foreign_by_commodity.csv"), row.names = FALSE )
+
+```
+
+###  Production by Commodity (Wholesale)
+
+```{r production_wholesale_commodity_barcharts}
+
+# Organize
+dat <- merge(producers[ProdType == 3, .(Capacity = sum(OutputCapacityTons)), by = Commodity_SCTG],
+             unique(c_n6_n6io_sctg[,.(Commodity_SCTG, Commodity = Commodity_SCTG_desc)]),
+             by = "Commodity_SCTG",
+             all.x = TRUE)[order(Capacity)]
+dat[, Commodity := factor(Commodity, levels = unique(Commodity))]
+
+# Plot
+p <- ggplot(data = dat, aes(Commodity, Capacity, fill = factor(ProdType))) +
+  geom_bar(stat = "identity", fill = rgb(rsgcolordf[c(4),],maxColorValue = 255)) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Capacity") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_wholesale_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_wholesale_by_commodity.csv"), row.names = FALSE )
+
+```
+
+Column 3 {data-width=200}
+--------------------------------------------
+
+###  Production by Commodity (Chicago Region)
+
+```{r production_commodity_region_barcharts}
+
+# Organize
+dat <- merge(producers[Zone < 150, .(Capacity = sum(OutputCapacityTons)), by = .(Commodity_SCTG, ProdType)],
+             unique(c_n6_n6io_sctg[,.(Commodity_SCTG, Commodity = Commodity_SCTG_desc)]),
+             by = "Commodity_SCTG",
+             all.x = TRUE)
+dat[, Commodity := factor(Commodity, levels = unique(dat[, .(Capacity = sum(Capacity)), by = Commodity][order(Capacity)]$Commodity))]
+
+# Plot
+p <- ggplot(data = dat, aes(Commodity, Capacity, fill = factor(ProdType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255), labels = c("Domestic", "Wholesale")) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Capacity") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_region_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_region_by_commodity.csv"), row.names = FALSE )
+
+```
+
+###  Production by Industry
+
+```{r production_industry_barcharts}
+
+# Organize
+dat <- producers[, .(Capacity = sum(OutputCapacityTons)), by = .(n2 = substr(NAICS,1,2), ProdType)]
+dat[n2 == "4A", n2 := "44"]
+dat[n2 == "S0", n2 := "92"]
+dat[, n2 := as.integer(n2)]
+
+dat <- merge(dat,
+             unique(c_n6_labels[,.(n2 = NAICS2, Industry = Label2Short)]),
+             by = "n2",
+             all.x = TRUE)[,.(Capacity = sum(Capacity)), by = .(Industry, ProdType)]
+dat[, Industry := factor(Industry, levels = unique(dat[, .(Capacity = sum(Capacity)), by = Industry][order(Capacity)]$Industry))]
+
+
+# Plot
+p <- ggplot(data = dat, aes(Industry, Capacity, fill = factor(ProdType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 3, 4),],maxColorValue = 255), labels = c("Domestic", "Foreign", "Wholesale")) +
+  xlab("Industry") +
+  scale_y_continuous(name = "Capacity") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom")
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_by_industry.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_by_industry.csv"), row.names = FALSE )
+
+```
+
+###  Production by Industry (Chicago Region)
+
+```{r production_industry_region_barcharts}
+
+# Organize
+dat <- producers[Zone < 150, .(Capacity = sum(OutputCapacityTons)), by = .(n2 = substr(NAICS,1,2), ProdType)]
+dat[n2 == "4A", n2 := "44"]
+dat[n2 == "S0", n2 := "92"]
+dat[, n2 := as.integer(n2)]
+
+dat <- merge(dat,
+             unique(c_n6_labels[,.(n2 = NAICS2, Industry = Label2Short)]),
+             by = "n2",
+             all.x = TRUE)[,.(Capacity = sum(Capacity)), by = .(Industry, ProdType)]
+dat[, Industry := factor(Industry, levels = unique(dat[, .(Capacity = sum(Capacity)), by = Industry][order(Capacity)]$Industry))]
+
+
+# Plot
+p <- ggplot(data = dat, aes(Industry, Capacity, fill = factor(ProdType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255), labels = c("Domestic", "Wholesale")) +
+  xlab("Industry") +
+  scale_y_continuous(name = "Capacity") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom")
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_by_industry.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_region_by_industry.csv"), row.names = FALSE )
+
+```
+
+###  Production by Industry (Census Region)
+
+```{r production_industry_census_barcharts}
+
+# Organize
+dat <- producers[, .(Capacity = sum(OutputCapacityTons)), by = .(n2 = substr(NAICS,1,2), ProdType, FAFZONE)]
+dat[n2 == "4A", n2 := "44"]
+dat[n2 == "S0", n2 := "92"]
+dat[, n2 := as.integer(n2)]
+
+dat <- merge(dat,
+             unique(c_n6_labels[,.(n2 = NAICS2, Industry = Label2Short)]),
+             by = "n2",
+             all.x = TRUE)[,.(Capacity = sum(Capacity)), by = .(Industry, ProdType, FAFZONE)]
+dat <- merge(dat,
+             unique(c_mz_faf_reg[,.(FAFZONE, REGION)]),
+             by = "FAFZONE",
+             all.x = TRUE)[,.(Capacity = sum(Capacity)), by = .(Industry, ProdType, REGION)]
+
+dat[, Industry := factor(Industry, levels = unique(dat[, .(Capacity = sum(Capacity)), by = Industry][order(Capacity)]$Industry))]
+
+
+# Plot
+p <- ggplot(data = dat, aes(Industry, Capacity, fill = factor(ProdType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 3, 4),],maxColorValue = 255), labels = c("Domestic", "Foreign", "Wholesale")) +
+  xlab("Industry") +
+  scale_y_continuous(name = "Capacity") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  facet_wrap(~REGION, ncol = 2) + 
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_census_by_industry.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_census_by_industry.csv"), row.names = FALSE )
+
+```
+
+
+Column 4 {data-width=200}
+--------------------------------------------
+
+###  Production by Commodity (MidWest)
+
+```{r production_commodity_midwest_barcharts}
+
+# Organize
+dat <- merge(producers[, .(Capacity = sum(OutputCapacityTons)), by = .(Commodity_SCTG, ProdType, FAFZONE)],
+             unique(c_n6_n6io_sctg[,.(Commodity_SCTG, Commodity = Commodity_SCTG_desc)]),
+             by = "Commodity_SCTG",
+             all.x = TRUE)
+dat <- merge(dat,
+             unique(c_mz_faf_reg[,.(FAFZONE, REGION)]),
+             by = "FAFZONE",
+             all.x = TRUE)[,.(Capacity = sum(Capacity)), by = .(Commodity_SCTG, Commodity, ProdType, REGION)]
+dat.region <- dat[REGION == "MidWest"]
+dat.region[, Commodity := factor(Commodity, levels = unique(dat.region[, .(Capacity = sum(Capacity)), by = Commodity][order(Capacity)]$Commodity))]
+
+# Plot
+p <- ggplot(data = dat.region, aes(Commodity, Capacity, fill = factor(ProdType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255), labels = c("Domestic", "Wholesale")) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Capacity") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_midwest_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_midwest_by_commodity.csv"), row.names = FALSE )
+
+```
+
+###  Production by Commodity (NorthEast)
+
+```{r production_commodity_northeast_barcharts}
+
+# Organize
+dat.region <- dat[REGION == "NorthEast"]
+dat.region[, Commodity := factor(Commodity, levels = unique(dat.region[, .(Capacity = sum(Capacity)), by = Commodity][order(Capacity)]$Commodity))]
+
+# Plot
+p <- ggplot(data = dat.region, aes(Commodity, Capacity, fill = factor(ProdType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255), labels = c("Domestic", "Wholesale")) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Capacity") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_northeast_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_northeast_by_commodity.csv"), row.names = FALSE )
+
+```
+
+###  Production by Commodity (South)
+
+```{r production_commodity_south_barcharts}
+
+# Organize
+dat.region <- dat[REGION == "South"]
+dat.region[, Commodity := factor(Commodity, levels = unique(dat.region[, .(Capacity = sum(Capacity)), by = Commodity][order(Capacity)]$Commodity))]
+
+# Plot
+p <- ggplot(data = dat.region, aes(Commodity, Capacity, fill = factor(ProdType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255), labels = c("Domestic", "Wholesale")) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Capacity") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_south_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_south_by_commodity.csv"), row.names = FALSE )
+
+```
+
+###  Production by Commodity (West)
+
+```{r production_commodity_west_barcharts}
+
+# Organize
+dat.region <- dat[REGION == "West"]
+dat.region[, Commodity := factor(Commodity, levels = unique(dat.region[, .(Capacity = sum(Capacity)), by = Commodity][order(Capacity)]$Commodity))]
+
+# Plot
+p <- ggplot(data = dat.region, aes(Commodity, Capacity, fill = factor(ProdType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255), labels = c("Domestic", "Wholesale")) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Capacity") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_west_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_production_west_by_commodity.csv"), row.names = FALSE )
+
+```
+
+Consumers
+============================================
+
+Summary {data-width=200}
+--------------------------------------------
+
+### About this Document
+
+This document is a summary of the Firm Synthesis outputs from the CMAP Freight Model
+
+### Producers
+
+```{r Number_Consumers_ValueBox}
+valueBox(format(firms_sum$consumers, big.mark = ","), "Number of Consumers", icon = "fa-industry")
+```
+
+### Consumption Requirements
+
+```{r Requirements_Consumers_ValueBox}
+valueBox(format(firms_sum$consumer_inputs, big.mark = ",", scientific = FALSE), "Requirements of Consumers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+### Consumption Requirements (Domestic, not including Wholesalers)
+
+```{r Requirements_Consumers_Domestic_ValueBox}
+valueBox(format(consumers[ConsType == 1, sum(PurchaseAmountTons)], big.mark = ",", scientific = FALSE), "Requirements at Domestic Consumers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+### Consumption Requirements (Foreign, consuming exports)
+
+```{r Requirements_Consumers_Foreign_ValueBox}
+valueBox(format(consumers[ConsType == 2, sum(PurchaseAmountTons)], big.mark = ",", scientific = FALSE), "Requirements at Foreign Consumers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+### Consumption Requirements (Domestic Wholesalers)
+
+```{r Requirements_Consumers_Wholesale_ValueBox}
+valueBox(format(consumers[ConsType == 3, sum(PurchaseAmountTons)], big.mark = ",", scientific = FALSE), "Requirements at Domestic Wholesalers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+Column 2 {data-width=200}
+--------------------------------------------
+
+###  Consumption by Commodity
+
+```{r consumption_commodity_barcharts}
+
+# Organize
+dat <- merge(consumers[, .(Requirements = sum(PurchaseAmountTons)), by = .(Commodity_SCTG, ConsType)],
+             unique(c_n6_n6io_sctg[,.(Commodity_SCTG, Commodity = Commodity_SCTG_desc)]),
+             by = "Commodity_SCTG",
+             all.x = TRUE)
+dat[, Commodity := factor(Commodity, levels = unique(dat[, .(Requirements = sum(Requirements)), by = Commodity][order(Requirements)]$Commodity))]
+
+# Plot
+p <- ggplot(data = dat, aes(Commodity, Requirements, fill = factor(ConsType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 3, 4),],maxColorValue = 255), labels = c("Domestic", "Foreign", "Wholesale")) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Requirements") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_by_commodity.csv"), row.names = FALSE )
+
+```
+
+###  Consumption by Commodity (Domestic)
+
+```{r consumption_domestic_commodity_barcharts}
+
+# Organize
+dat <- merge(consumers[ConsType == 1, .(Requirements = sum(PurchaseAmountTons)), by = .(Commodity_SCTG, ConsType)],
+             unique(c_n6_n6io_sctg[,.(Commodity_SCTG, Commodity = Commodity_SCTG_desc)]),
+             by = "Commodity_SCTG",
+             all.x = TRUE)
+dat[, Commodity := factor(Commodity, levels = unique(dat[, .(Requirements = sum(Requirements)), by = Commodity][order(Requirements)]$Commodity))]
+
+# Plot
+p <- ggplot(data = dat, aes(Commodity, Requirements, fill = factor(ConsType))) +
+  geom_bar(stat = "identity", fill = rgb(rsgcolordf[c(2),],maxColorValue = 255)) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Requirements") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_domestic_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_domestic_by_commodity.csv"), row.names = FALSE )
+
+```
+
+###  Consumption by Commodity (Foreign)
+
+```{r consumption_foreign_commodity_barcharts}
+
+# Organize
+dat <- merge(consumers[ConsType == 2, .(Requirements = sum(PurchaseAmountTons)), by = .(Commodity_SCTG, ConsType)],
+             unique(c_n6_n6io_sctg[,.(Commodity_SCTG, Commodity = Commodity_SCTG_desc)]),
+             by = "Commodity_SCTG",
+             all.x = TRUE)
+dat[, Commodity := factor(Commodity, levels = unique(dat[, .(Requirements = sum(Requirements)), by = Commodity][order(Requirements)]$Commodity))]
+
+# Plot
+p <- ggplot(data = dat, aes(Commodity, Requirements, fill = factor(ConsType))) +
+  geom_bar(stat = "identity", fill = rgb(rsgcolordf[c(3),],maxColorValue = 255)) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Requirements") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_foreign_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_foreign_by_commodity.csv"), row.names = FALSE )
+
+```
+
+###  Consumption by Commodity (Wholesale)
+
+```{r consumption_wholesale_commodity_barcharts}
+
+# Organize
+dat <- merge(consumers[ConsType == 3, .(Requirements = sum(PurchaseAmountTons)), by = .(Commodity_SCTG, ConsType)],
+             unique(c_n6_n6io_sctg[,.(Commodity_SCTG, Commodity = Commodity_SCTG_desc)]),
+             by = "Commodity_SCTG",
+             all.x = TRUE)
+dat[, Commodity := factor(Commodity, levels = unique(dat[, .(Requirements = sum(Requirements)), by = Commodity][order(Requirements)]$Commodity))]
+
+# Plot
+p <- ggplot(data = dat, aes(Commodity, Requirements, fill = factor(ConsType))) +
+  geom_bar(stat = "identity", fill = rgb(rsgcolordf[c(4),],maxColorValue = 255)) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Requirements") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_wholesale_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_wholesale_by_commodity.csv"), row.names = FALSE )
+
+```
+
+###  Consumption by Commodity (Chicago Region)
+
+```{r consumption_commodity_region_barcharts}
+
+# Organize
+dat <- merge(consumers[Zone < 150, .(Requirements = sum(PurchaseAmountTons)), by = .(Commodity_SCTG, ConsType)],
+             unique(c_n6_n6io_sctg[,.(Commodity_SCTG, Commodity = Commodity_SCTG_desc)]),
+             by = "Commodity_SCTG",
+             all.x = TRUE)
+dat[, Commodity := factor(Commodity, levels = unique(dat[, .(Requirements = sum(Requirements)), by = Commodity][order(Requirements)]$Commodity))]
+
+# Plot
+p <- ggplot(data = dat, aes(Commodity, Requirements, fill = factor(ConsType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255), labels = c("Domestic", "Wholesale")) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Requirements") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_region_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_region_by_commodity.csv"), row.names = FALSE )
+
+```
+
+Column 3 {data-width=200}
+--------------------------------------------
+
+###  Consumption by Industry
+
+```{r consumption_industry_barcharts}
+
+# Organize
+dat <- consumers[, .(Requirements = sum(PurchaseAmountTons)), by = .(n2 = substr(NAICS,1,2), ConsType)]
+dat[n2 == "4A", n2 := "44"]
+dat[n2 == "S0", n2 := "92"]
+dat[, n2 := as.integer(n2)]
+
+dat <- merge(dat,
+             unique(c_n6_labels[,.(n2 = NAICS2, Industry = Label2Short)]),
+             by = "n2",
+             all.x = TRUE)[,.(Requirements = sum(Requirements)), by = .(Industry, ConsType)]
+dat[, Industry := factor(Industry, levels = unique(dat[, .(Requirements = sum(Requirements)), by = Industry][order(Requirements)]$Industry))]
+
+# Plot
+p <- ggplot(data = dat, aes(Industry, Requirements, fill = factor(ConsType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 3, 4),],maxColorValue = 255), labels = c("Domestic", "Foreign", "Wholesale")) +
+  xlab("Industry") +
+  scale_y_continuous(name = "Requirements") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_by_industry.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_by_industry.csv"), row.names = FALSE )
+
+```
+
+###  Consumption by Industry (Chicago Region)
+
+```{r consumption_industry_region_barcharts}
+
+# Organize
+dat <- consumers[Zone < 150, .(Requirements = sum(PurchaseAmountTons)), by = .(n2 = substr(NAICS,1,2), ConsType)]
+dat[n2 == "4A", n2 := "44"]
+dat[n2 == "S0", n2 := "92"]
+dat[, n2 := as.integer(n2)]
+
+dat <- merge(dat,
+             unique(c_n6_labels[,.(n2 = NAICS2, Industry = Label2Short)]),
+             by = "n2",
+             all.x = TRUE)[,.(Requirements = sum(Requirements)), by = .(Industry, ConsType)]
+dat[, Industry := factor(Industry, levels = unique(dat[, .(Requirements = sum(Requirements)), by = Industry][order(Requirements)]$Industry))]
+
+# Plot
+p <- ggplot(data = dat, aes(Industry, Requirements, fill = factor(ConsType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255), labels = c("Domestic", "Wholesale")) +
+  xlab("Industry") +
+  scale_y_continuous(name = "Requirements") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_region_by_industry.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_region_by_industry.csv"), row.names = FALSE )
+
+```
+
+###  Consumption by Industry (Census Region)
+
+```{r consumption_industry_census_barcharts, fig.height=10}
+
+# Organize
+dat <- consumers[, .(Requirements = sum(PurchaseAmountTons)), by = .(n2 = substr(NAICS,1,2), ConsType, FAFZONE)]
+dat[n2 == "4A", n2 := "44"]
+dat[n2 == "S0", n2 := "92"]
+dat[, n2 := as.integer(n2)]
+
+dat <- merge(dat,
+             unique(c_n6_labels[,.(n2 = NAICS2, Industry = Label2Short)]),
+             by = "n2",
+             all.x = TRUE)[,.(Requirements = sum(Requirements)), by = .(Industry, ConsType, FAFZONE)]
+dat <- merge(dat,
+             unique(c_mz_faf_reg[,.(FAFZONE, REGION)]),
+             by = "FAFZONE",
+             all.x = TRUE)[,.(Requirements = sum(Requirements)), by = .(Industry, ConsType, REGION)]
+dat[, Industry := factor(Industry, levels = unique(dat[, .(Requirements = sum(Requirements)), by = Industry][order(Requirements)]$Industry))]
+
+
+# Plot
+p <- ggplot(data = dat, aes(Industry, Requirements, fill = factor(ConsType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 3, 4),],maxColorValue = 255), labels = c("Domestic", "Foreign", "Wholesale")) +
+  xlab("Industry") +
+  scale_y_continuous(name = "Requirements") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  facet_wrap(~REGION, ncol = 2) +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_census_by_industry.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_census_by_industry.csv"), row.names = FALSE )
+
+```
+
+
+Column 4 {data-width=200}
+--------------------------------------------
+
+###  Consumption by Commodity (MidWest)
+
+```{r consumption_commodity_midwest_barcharts}
+
+# Organize
+dat <- merge(consumers[, .(Requirements = sum(PurchaseAmountTons)), by = .(Commodity_SCTG, ConsType, FAFZONE)],
+             unique(c_n6_n6io_sctg[,.(Commodity_SCTG, Commodity = Commodity_SCTG_desc)]),
+             by = "Commodity_SCTG",
+             all.x = TRUE)
+dat <- merge(dat,
+             unique(c_mz_faf_reg[,.(FAFZONE, REGION)]),
+             by = "FAFZONE",
+             all.x = TRUE)[,.(Requirements = sum(Requirements)), by = .(Commodity_SCTG, Commodity, ConsType, REGION)]
+dat.region <- dat[REGION == "MidWest"]
+dat.region[, Commodity := factor(Commodity, levels = unique(dat.region[, .(Requirements = sum(Requirements)), by = Commodity][order(Requirements)]$Commodity))]
+
+# Plot
+p <- ggplot(data = dat.region, aes(Commodity, Requirements, fill = factor(ConsType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255), labels = c("Domestic", "Wholesale")) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Requirements") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_midwest_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_midwest_by_commodity.csv"), row.names = FALSE )
+
+```
+
+###  Consumption by Commodity (NorthEast)
+
+```{r consumption_commodity_northeast_barcharts}
+
+# Organize
+dat.region <- dat[REGION == "NorthEast"]
+dat.region[, Commodity := factor(Commodity, levels = unique(dat.region[, .(Requirements = sum(Requirements)), by = Commodity][order(Requirements)]$Commodity))]
+
+# Plot
+p <- ggplot(data = dat.region, aes(Commodity, Requirements, fill = factor(ConsType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255), labels = c("Domestic", "Wholesale")) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Requirements") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_northeast_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_northeast_by_commodity.csv"), row.names = FALSE )
+
+```
+
+###  Consumption by Commodity (South)
+
+```{r consumption_commodity_south_barcharts}
+
+# Organize
+dat.region <- dat[REGION == "South"]
+dat.region[, Commodity := factor(Commodity, levels = unique(dat.region[, .(Requirements = sum(Requirements)), by = Commodity][order(Requirements)]$Commodity))]
+
+# Plot
+p <- ggplot(data = dat.region, aes(Commodity, Requirements, fill = factor(ConsType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255), labels = c("Domestic", "Wholesale")) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Requirements") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_south_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_south_by_commodity.csv"), row.names = FALSE )
+
+```
+
+###  Consumption by Commodity (West)
+
+```{r consumption_commodity_west_barcharts}
+
+# Organize
+dat.region <- dat[REGION == "West"]
+dat.region[, Commodity := factor(Commodity, levels = unique(dat.region[, .(Requirements = sum(Requirements)), by = Commodity][order(Requirements)]$Commodity))]
+
+# Plot
+p <- ggplot(data = dat.region, aes(Commodity, Requirements, fill = factor(ConsType))) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 4),],maxColorValue = 255), labels = c("Domestic", "Wholesale")) +
+  xlab("Commodity") +
+  scale_y_continuous(name = "Requirements") + 
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  coord_flip()
+p
+
+# Save
+# png(filename = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_west_by_commodity.png"), width = 500, height = 400)
+# p
+# dev.off()
+
+write.csv(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_syn_consumption_west_by_commodity.csv"), row.names = FALSE )
+
+```
+

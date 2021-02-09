@@ -1,0 +1,125 @@
+html {
+  -ms-text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+body {
+	padding-top: 54px;
+}
+.section.sidebar {
+	top: 45px;
+	background-color: rgb(107, 174, 214);
+}
+.value-box {
+	color: rgb(255, 255, 255);
+}
+.bg-primary {
+	background-color: rgb(107, 174, 214);
+}
+.navbar-inverse {
+	background-color: rgb(49, 130, 189);
+}
+.dropdown-menu {
+	background-color: rgb(49, 130, 189);
+}
+.nav-tabs-custom > .nav-tabs > li.active {
+	background-color: rgb(107, 174, 214);
+}
+.storyboard-nav .sbframelist ul li.active {
+	background-color: rgb(107, 174, 214);
+}
+.navbar-inverse .navbar-nav>.active>a,
+.navbar-inverse .navbar-nav>.active>a:hover,
+.navbar-inverse .navbar-nav>.active>a:focus,
+.navbar-inverse .navbar-nav>li>a:hover,
+.navbar-inverse .navbar-nav>li>a:focus {
+	background-color: rgb(8, 81, 156);
+}
+
+.leaflet-div-icon-cv-service {
+    border-radius: 50%;
+    background: #000;
+    border: none;
+}
+
+.leaflet-div-icon-cv-return {
+    background: #000;
+    border: none;
+}
+
+.leaflet-div-icon-cv-other {
+    width: 0;
+    height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-bottom: 12px solid black;
+}
+
+.leaflet-div-icon-cv-break_meal {
+    background: #444;
+    border: none;
+}
+
+.leaflet-div-icon-cv-goods {
+    background: #888;
+    border: none;
+}
+
+.leaflet-div-icon-cv-meeting {
+    background: #BBB;
+    border: none;
+}
+
+.leaflet-div-icon-cv-vehicle_service {
+    background: #FFF;
+    border: none;
+}
+
+.leaflet-div-icon-ft-delivery {
+    border-radius: 50%;
+    background: #000;
+    border: none;
+}
+
+.leaflet-div-icon-ft-return {
+    background: #000;
+    border: none;
+}
+
+.leaflet-div-icon-ft-pick_up {
+    width: 0;
+    height: 0;
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-bottom: 12px solid black;
+}
+
+.leaflet-div-icon-ft-break_meal {
+    background: #444;
+    border: none;
+}
+
+.leaflet-div-icon-ft-transfer {
+    background: #888;
+    border: none;
+}
+
+.leaflet-div-icon-ft-other {
+    background: #BBB;
+    border: none;
+}
+
+.leaflet-div-icon-ft-vehicle_service {
+    background: #FFF;
+    border: none;
+}
+
+.leaflet-div-icon-legend {
+	width: 12px;
+	height: 12px;
+	margin-right: 5px;
+	display: inline-block;
+}
+
+.leaflet-left {
+	width: 100%;
+}
