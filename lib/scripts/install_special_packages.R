@@ -2,12 +2,12 @@
 # This script installs packages for the model which are not readily available on
 # CRAN. All packages from CRAN are installed directly by rFreight functions.
 
-# # Set a CRAN mirror
-# local({
-#   repo <- getOption("repos")
-#   repo["CRAN"] <- "https://cran.cnr.berkeley.edu/"
-#   options(repos=repo)
-# })
+# Set a CRAN mirror
+local({
+  repo <- getOption("repos")
+  repo["CRAN"] <- "https://cloud.r-project.org"
+  options(repos=repo)
+})
 
 # check for data.table -- needs to be installed for rFreight to load
 if(!("data,table" %in% installed.packages(lib.loc = SYSTEM_PKGS_PATH)[,1])){
