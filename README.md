@@ -10,3 +10,7 @@ Working version of the code that:
 - transitions the PMG to open R code format as opposed to a compiled C++ application
 - adds a visualization dashboard to view scenario results from the supply chain model
 - adds a calibration framework to support calibration of the supply chain model (and other components)
+
+# Release versions
+Release versions document the changes to the model during development and calibration
+- Working version in R v4, with C++ PMG, uncalibrated: https://github.com/CMAP-REPOS/cmap_freight_model/releases/tag/v0.1 
