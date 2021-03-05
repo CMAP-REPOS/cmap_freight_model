@@ -68,7 +68,7 @@ firm_synthesis_enumerate <- function(cbp, c_n6_n6io_sctg, EmpBounds, cbp_ag = NU
   FirmsDomestic[, c("n2","n4") := .(substr(Industry_NAICS6_CBP, 1, 2), substr(Industry_NAICS6_CBP, 1, 4))]
 
   # Melt to create separate rows for each firm size category
-  FirmsDomestic <- melt(FirmsDomestic,
+  FirmsDomestic <- melt.data.table(FirmsDomestic,
                         measure.vars = paste0("e",1:8),
                         variable.name ="esizecat",
                         value.name = "est")

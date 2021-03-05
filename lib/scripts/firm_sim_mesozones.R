@@ -11,7 +11,7 @@ firm_synthesis_mesozones <- function(Firms){
   FirmsCMAP[n2 %in% c("S0"), n2 := "92"]
 
   # Convert the ranking table to long format
-  mzemp <- melt(mzemp,
+  mzemp <- melt.data.table(mzemp,
                 id.vars = c("COUNTY", "MESOZONE"),
                 variable.name = "n2",
                 value.name = "EmpRank")

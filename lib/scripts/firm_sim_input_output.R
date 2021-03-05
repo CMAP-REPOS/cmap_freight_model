@@ -4,7 +4,7 @@ firm_synthesis_input_output <- function(io, c_n6_n6io_sctg){
   # Clean and format the input output data
   setnames(io, names(io),sub("X", "", names(io)))
 
-  io <- melt(io,
+  io <- melt.data.table(io,
              id.vars = "Industry_NAICS6_MakeUse",
              variable.name = "Industry_NAICS6_Use",
              value.name = "ProVal")

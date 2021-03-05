@@ -268,7 +268,7 @@ predict_logit <- function (df, mod, cal = NULL, calcats = NULL, iter = 1) {
       sim <- sim/colSums(sim)
       if (length(unique(calcats$CHOICE)) < length(unique(calcats$CHID))) {
         sim <- cbind(calcats, sim)
-        sim <- melt(sim, id.vars = c("CHOICE", "CHID"), 
+        sim <- melt.data.table(sim, id.vars = c("CHOICE", "CHID"), 
                     variable.name = "CATEGORY")
         sim <- sim[, list(MODEL = sum(value)), by = list(CHOICE, 
                                                          CATEGORY)]
@@ -283,7 +283,7 @@ predict_logit <- function (df, mod, cal = NULL, calcats = NULL, iter = 1) {
         caldat <- caldat[, list(TARGET = sum(TARGET)), 
                          by = list(CATEGORY, CHID)]
         sim <- data.table(CHID = 1:nrow(sim), sim)
-        sim <- melt(sim, id.vars = c("CHID"), variable.name = "CATEGORY")
+        sim <- melt.data.table(sim, id.vars = c("CHID"), variable.name = "CATEGORY")
         sim <- merge(sim, caldat, c("CATEGORY", "CHID"))
         sim[, `:=`(ascadj, log(TARGET/value))]
         adj <- sim[, list(CATEGORY, CHID, ascadj)]
