@@ -5,12 +5,15 @@ After annual commodity flows between individual firms are developed in the natio
 
 # modelDevelopment branch
 Working version of the code that:
-- update includes updates to transition the code to working in R Version 4.0 and with rFreight version 0.1-27
+- update includes updates to transition the code to working in R Version 4.0 and with rFreight version 0.1-30
 - incorporates updates to a consistent code structure for all model components
 - transitions the PMG to open R code format as opposed to a compiled C++ application
 - adds a visualization dashboard to view scenario results from the supply chain model
 - adds a calibration framework to support calibration of the supply chain model (and other components)
+- updated firm synthesis to operate at the TAZ level in the CMAP region to produce inputs for a commercial vehicle model
 
 # Release versions
 Release versions document the changes to the model during development and calibration
-- Working version in R v4, with C++ PMG, uncalibrated: https://github.com/CMAP-REPOS/cmap_freight_model/releases/tag/v0.1 
+- Working version in R v4, with C++ PMG, uncalibrated: https://github.com/CMAP-REPOS/cmap_freight_model/releases/tag/v0.1
+- Updated Working version in R v4, with C++ PMG, TAZ (as opposed to Mesozone) implementation of firm synthesis, support for calibration, but uncalibrated: https://github.com/CMAP-REPOS/cmap_freight_model/releases/tag/v0.2
+
