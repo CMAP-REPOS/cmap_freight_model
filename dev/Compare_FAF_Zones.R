@@ -11,14 +11,18 @@ rsgcolordf <- data.frame(red=c(246,0,99,186,117,255,82),
                          blue=c(31,161,94,34,233,14,133),
                          colornames=c("orange","marine","leaf","cherry","sky","sunshine","violet"))
 
+# working folders
+CALIBRATION_DIR <-"./dev/Calibration"
+GIS_DIR <- "./dev/GIS"
+
 # county -- FAF corresp
-faf5 <- fread("County_to_FAFZone.csv")
+faf5 <- fread(file.path(CALIBRATION_DIR, "County_to_FAFZone.csv"))
 length(unique(faf5[StateFIPS <= 56]$FAFZone_5.0))
-faf3 <- fread("corresp_countyfips_faf3.csv")
-length(unique(faf4$FAFZONE))
+faf3 <- fread(file.path(CALIBRATION_DIR, "corresp_countyfips_faf3.csv"))
+length(unique(faf3$FAFZONE))
 
 # CFS FAF 5 names
-cfs <- data.table(read.xlsx("CFS-area-code-FAF5-zone-id.xlsx"))
+cfs <- data.table(read.xlsx(file.path(CALIBRATION_DIR, "CFS-area-code-FAF5-zone-id.xlsx")))
 cfs[, FAFZone_5 := as.integer(FAF)]
 
 # Compare FAF zone set
@@ -72,13 +76,13 @@ fafcomp[, FAF_Change := ifelse(FAF3_Type == FAF5_Type | is.na(FAF3_Type), FAF5_T
 unique(fafcomp$FAF_Change)
 
 fwrite(fafcomp,
-       "FAF3_FAF5_FIPS_Comparison.csv")
+       file.path(CALIBRATION_DIR, "FAF3_FAF5_FIPS_Comparison.csv"))
 
 fafcomp[FAFName_5 == "Chicago-Naperville, IL-IN-WI  CFS Area (IL Part)"]
 
 # create maps to show differences
-state <- read_sf("GIS/tl_2015_us_state.shp")
-county <- read_sf("GIS/tl_2015_us_county.shp")
+state <- read_sf(file.path(GIS_DIR, "tl_2015_us_state.shp"))
+county <- read_sf(file.path(GIS_DIR, "tl_2015_us_county.shp"))
 county[county$GEOID %in% c("02158", "46102"),] # New FIPSs are in there
 county[county$GEOID %in% c("02270", "46113", "51515"),] # Old FIPS are not
 
@@ -105,4 +109,6 @@ p_faf_state_county <- ggplot(data = county[county$Lower == "Lower48",]) +
   labs(title = "Zone System Comparison", 
        subtitle = "Comparing County Composition of FAF 3 and FAF 5", 
        caption = "Source: FHWA FAF3, FAF5 Zone Systems") 
-ggsave(filename = "p_faf_state_county.png", plot = p_faf_state_county, width = 12, height = 8)
+
+ggsave(filename = file.path(CALIBRATION_DIR, "p_faf_state_county.png"), 
+       plot = p_faf_state_county, width = 12, height = 8)
