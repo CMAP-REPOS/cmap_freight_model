@@ -25,8 +25,10 @@ firm_sim <- function(cbp) {
   # Scale the emplyoment
   FirmsDomestic <- firm_synthesis_scaling(Firms = FirmsDomestic,
                                           emp_control = emp_control,
+                                          emp_control_taz = emp_control_taz,
                                           c_cbp_faf = c_cbp_faf,
                                           c_cbp_mz = c_cbp_mz,
+                                          c_taz_mz = c_taz_mz,
                                           EmpBounds = EmpBounds)
   
   # save regional CBP list for analysis

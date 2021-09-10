@@ -1,5 +1,5 @@
 # Scale employment by industry and mesozone to match control data
-firm_synthesis_scaling <- function(Firms, emp_control, c_cbp_faf, c_cbp_mz, EmpBounds){
+firm_synthesis_scaling <- function(Firms, emp_control, emp_control_taz, c_cbp_faf, c_cbp_mz, c_taz_mz, EmpBounds){
 
   # Control data are by:
   # 1. Mesozone 1-132
@@ -15,8 +15,7 @@ firm_synthesis_scaling <- function(Firms, emp_control, c_cbp_faf, c_cbp_mz, EmpB
   Firms <- firm_sim_scale_employees(Firms, emp_control, c_cbp_faf, c_cbp_mz, EmpBounds[1:8])
 
   ## Remove uncessary fields
-  #Firms[, n2 := NULL]
-
+  
   # Return the processed cbp table
   return(Firms)
 
