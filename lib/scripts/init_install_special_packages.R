@@ -10,13 +10,18 @@ local({
 })
 
 # check for data.table -- needs to be installed for rFreight to load
-if(!("data,table" %in% installed.packages(lib.loc = SYSTEM_PKGS_PATH)[,1])){
+if(!("data.table" %in% installed.packages(lib.loc = SYSTEM_PKGS_PATH)[,1])){
   install.packages("data.table", lib = SYSTEM_PKGS_PATH) 
 }
 
 # check for reshape -- needs to be installed for rFreight to load
 if(!("reshape" %in% installed.packages(lib.loc = SYSTEM_PKGS_PATH)[,1])){
   install.packages("reshape", lib = SYSTEM_PKGS_PATH) 
+}
+
+# check for plyr -- needs to be installed for rFreight to load
+if(!("plyr" %in% installed.packages(lib.loc = SYSTEM_PKGS_PATH)[,1])){
+  install.packages("plyr", lib = SYSTEM_PKGS_PATH) 
 }
 
 # Install rFreight if not currently installed
@@ -35,7 +40,6 @@ if(!("rFreight" %in% installed.packages(lib.loc = SYSTEM_PKGS_PATH)[,1])){
                      lib = file.path(SYSTEM_PKGS_PATH),
                      repos = NULL)
   }
-  
 }
 
 # Install "rhdf5" and "Rhdf5lib" packages from Bioconductor repository, which
@@ -43,9 +47,9 @@ if(!("rFreight" %in% installed.packages(lib.loc = SYSTEM_PKGS_PATH)[,1])){
 if (!requireNamespace("BiocManager", quietly = TRUE)){
   install.packages("BiocManager")
 }
-if (!("rhdf5" %in% installed.packages(SYSTEM_PKGS_PATH))) {
+if (!("rhdf5" %in% installed.packages(SYSTEM_PKGS_PATH)[,1])) {
   BiocManager::install("rhdf5", lib = SYSTEM_PKGS_PATH, ask = FALSE)
 }
-if (!("Rhdf5lib" %in% installed.packages(SYSTEM_PKGS_PATH))) {
+if (!("Rhdf5lib" %in% installed.packages(SYSTEM_PKGS_PATH)[,1])) {
   BiocManager::install("Rhdf5lib", lib = SYSTEM_PKGS_PATH, ask = FALSE)
 }
