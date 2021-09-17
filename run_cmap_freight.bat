@@ -1,2 +1,2 @@
-Rscript run_cmap_freight.R base 2010
+Rscript run_cmap_freight.R base 2015
 pause
