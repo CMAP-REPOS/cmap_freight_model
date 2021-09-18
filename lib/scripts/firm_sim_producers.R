@@ -97,6 +97,7 @@ firm_synthesis_producers <- function(io, fromwhl, FirmsDomestic, FirmsForeign, u
 
   # calculate other fields required in producers tables
   producers.foreign[, MESOZONE := CBPZONE + 150L]
+  producers.foreign[, TAZ := as.numeric(NA)]
   producers.foreign[, BusID := max(FirmsDomestic$BusID) + .I]
 
   # Add Output commodity

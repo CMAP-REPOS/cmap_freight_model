@@ -40,6 +40,10 @@ firm_sim_process_inputs <- function(envir) {
   # to conform to earlier assumption of midpoint being 7,500
   envir[["EmpBounds"]] <- c(1, 20, 100, 250, 500, 1000, 2500, 5000, 10000)
   
+  # Employment targets: replace the within CMAP portion in MZ with values rolled up from TAZ
+  envir[["emp_control"]] <- rbind(envir[["emp_control_taz"]][,.(Employment = sum(Employment, na.rm = TRUE)), keyby = .(Mesozone, NAICS)],
+                                  envir[["emp_control"]][Mesozone >= 150])
+  
   # Correspondence between TAZ and MZ based on employment data
   envir[["c_taz_mz"]] <- unique(envir$emp_control_taz[,.(TAZ = Zone17, Mesozone)])
   

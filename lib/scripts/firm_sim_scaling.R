@@ -1,18 +1,47 @@
 # Scale employment by industry and mesozone to match control data
 firm_synthesis_scaling <- function(Firms, emp_control, emp_control_taz, c_cbp_faf, c_cbp_mz, c_taz_mz, EmpBounds){
 
-  # Control data are by:
-  # 1. Mesozone 1-132
-  # 2. NAICS 2 digit (full detail) =
-  #    11 21 22 23 31 32 33 42 44 45 48 49 51 52 53 54 55 56 61 62 71 72 81 92
+  # Control data are in two levels of details:
+  # emp_control:
+  # 1. Mesozone 1-273, use for national portion of the model only, >= Mesozone 150
+  # 2. NAICS 2 digit (full detail)
+  #
+  # emp_control_taz:
+  # 1. TAZ 1-3632, use for CMAP portion of the model only, <= Mesozone 132
+  # 2. NAICS 2 digit (full detail)
 
   # Update fieldnames/datatypes for consistency
   setnames(emp_control, c("MESOZONE", "n2" , "Employees.SE"))
+  
+  setnames(emp_control_taz, 
+           c("Zone17", "Mesozone", "NAICS", "Employment"), 
+           c("TAZ", "MESOZONE", "n2" , "Employees.SE"))
+  
   Firms[, n2 := as.integer(n2)]
+  
+  # Add an initial allocation to the TAZs if there is no TAZ field yet 
+  # (this will be the case for base year firm synthesis but not alternative/future scenarios)
+  # Allocation proportional to employment
+  # Scaling algorithm will deal with any discrepancies at the TAZ level
+  if(!"TAZ" %in% names(Firms)){
+    
+    taz_prob <- emp_control_taz[, .(Employees.SE = sum(Employees.SE)), by = .(TAZ, MESOZONE)]
+    taz_prob[, Prob := Employees.SE/sum(Employees.SE), by = MESOZONE]
+    
+    for (mz in 1:132){
+      SampleTAZ <- c_taz_mz[mz == Mesozone]$TAZ
+      ProbTAZ <- taz_prob[mz == MESOZONE]$Prob
+      if(length(SampleTAZ) == 1){
+        Firms[MESOZONE == mz, TAZ := SampleTAZ]
+      } else {
+        Firms[MESOZONE == mz, TAZ := sample(SampleTAZ, size = .N, replace = TRUE, prob = ProbTAZ)]
+      }
+    }
+  }
 
   # Scale the employment in the region
   # Leave the upper employment bound open so the 8th group can grow larger than the upper bound set earlier to accomodate large firms
-  Firms <- firm_sim_scale_employees(Firms, emp_control, c_cbp_faf, c_cbp_mz, EmpBounds[1:8])
+  Firms <- firm_sim_scale_employees(Firms, emp_control, emp_control_taz, c_cbp_faf, c_cbp_mz, c_taz_mz, EmpBounds[1:8])
 
   ## Remove uncessary fields
   
@@ -22,13 +51,48 @@ firm_synthesis_scaling <- function(Firms, emp_control, emp_control_taz, c_cbp_fa
 }
 
 # Scale Firms to Employment Forecasts
-firm_sim_scale_employees <- function(Firms, Employment.SE, c_cbp_faf, c_cbp_mz, EmpBounds) {
+firm_sim_scale_employees <- function(Firms, emp_control, emp_control_taz, c_cbp_faf, c_cbp_mz, c_taz_mz, EmpBounds) {
 
-  # Scale synthetic firms to employment forecasts
-  Firms <- firm_sim_scale_employees_taz(RegionFirms = Firms,
-                                              Employment.SE = Employment.SE,
-                                              MaxBusID = max(Firms$BusID))
+  # Scale synthetic firms inside CMAP to employment forecasts
+  FirmsCMAP <- Firms[MESOZONE < 150]
+  
+  # Ensure that the targets and firms are consistent in terms of industrial coverage
+  # Function will produce an error if there are zero firms for a category where there is employment
+  emp_control_taz <- emp_control_taz[n2 %in% unique(FirmsCMAP$n2)]
+  
+  # Naming: unit to scale for CMAP region is TAZ, change to being called ZONE
+  setnames(emp_control_taz, "TAZ", "ZONE")
+  setnames(FirmsCMAP, "TAZ", "ZONE")
+  
+  FirmsCMAP <- firm_sim_scale_employees_taz(RegionFirms = FirmsCMAP,
+                                            Employment.SE = emp_control_taz,
+                                            MaxBusID = max(Firms$BusID))
+  
+  setnames(FirmsCMAP, "ZONE", "TAZ")
+  
+  # For CMAP firms, those that were sampled might have the wrong MESOZONE
+  FirmsCMAP[c_taz_mz, MESOZONE := i.Mesozone, on = "TAZ"]
+  
+  # Scale synthetic firms outside CMAP to employment forecasts
+  FirmsNonCMAP <- Firms[MESOZONE >= 150]
+  
+  # Ensure that the targets and firms are consistent in terms of industrial coverage
+  # Function will produce an error if there are zero firms for a category where there is employment
+  emp_control <- emp_control[n2 %in% unique(FirmsNonCMAP$n2)]
+  
+  # Naming: unit to scale for outside CMAP region is MESOZONE, change to being called ZONE
+  setnames(emp_control, "MESOZONE", "ZONE")
+  setnames(FirmsNonCMAP, "MESOZONE", "ZONE")
+  
+  FirmsNonCMAP <- firm_sim_scale_employees_taz(RegionFirms = FirmsNonCMAP,
+                                              Employment.SE = emp_control,
+                                              MaxBusID = max(c(Firms$BusID, FirmsCMAP$BusID)))
 
+  setnames(FirmsNonCMAP, "ZONE", "MESOZONE")
+  
+  # Combine to single Firms list
+  Firms <- rbind(FirmsCMAP, FirmsNonCMAP)
+  
   # Update the County and State FIPS and FAF zones
   Firms[c_cbp_mz, CBPZONE := i.COUNTY, on = "MESOZONE"]
   Firms[MESOZONE >= 150, CBPZONE := MESOZONE - 150L]
@@ -49,11 +113,14 @@ firm_sim_scale_employees <- function(Firms, Employment.SE, c_cbp_faf, c_cbp_mz, 
 # sub function called from firm_sim_scale_employees
 firm_sim_scale_employees_taz <- function(RegionFirms, Employment.SE, MaxBusID){
 
-  # Summarize employment of synthesized firms by Mesozone and Naics 2
-  Employment.CBP <- RegionFirms[, .(Employees.CBP = sum(Emp)), by = .(MESOZONE, n2)]
+  # Keep an unaltered copy of the region firms tables for sampling
+  RegionFirmsOriginal <- copy(RegionFirms)
+  
+  # Summarize employment of synthesized firms by ZONE and Naics 2
+  Employment.CBP <- RegionFirms[, .(Employees.CBP = sum(Emp)), by = .(ZONE, n2)]
 
   # Compare employment between socio-economic input (SE) and synthetized firms (CBP)
-  Employment.Compare <- merge(Employment.SE, Employment.CBP, by = c("MESOZONE", "n2"), all = TRUE)
+  Employment.Compare <- merge(Employment.SE, Employment.CBP, by = c("ZONE", "n2"), all = TRUE)
   Employment.Compare[is.na(Employees.SE), Employees.SE := 0]
   Employment.Compare[is.na(Employees.CBP), Employees.CBP := 0]
 
@@ -74,13 +141,13 @@ firm_sim_scale_employees_taz <- function(RegionFirms, Employment.SE, MaxBusID){
   Employment.Scaled[, Adjustment := Employees.SE / Employees.CBP]
 
   # Scale employees in firms table and bucket round
-  RegionFirms[Employment.Scaled, Adjustment := i.Adjustment, on = c("MESOZONE", "n2")]
+  RegionFirms[Employment.Scaled, Adjustment := i.Adjustment, on = c("ZONE", "n2")]
   RegionFirms[, Emp := as.numeric(Emp)]
-  RegionFirms[!is.na(Adjustment), Emp := as.numeric(bucketRound(Emp * Adjustment)), by = .(MESOZONE, n2)]
+  RegionFirms[!is.na(Adjustment), Emp := as.numeric(bucketRound(Emp * Adjustment)), by = .(ZONE, n2)]
   RegionFirms[, Adjustment := NULL]
   RegionFirms <- RegionFirms[Emp >= 1]
 
-  # Add firms to empty MESOZONE-NAICS 2 category combinations to deal with Case 2
+  # Add firms to empty ZONE-NAICS 2 category combinations to deal with Case 2
   FirmsNeeded <- Employment.Compare[Employees.CBP == 0]
 
   # For each combination:
@@ -88,29 +155,29 @@ firm_sim_scale_employees_taz <- function(RegionFirms, Employment.SE, MaxBusID){
   # 2. Add them to the firms table
   # 3. recalc the EMPADJ to refine the employment to match exactly the SE data employment
 
-  # Calculate average employment by NAICS 2
-  Employment.Avg <- RegionFirms[, .(Employees.Avg = mean(Emp)), by = n2]
+  # Calculate average employment by NAICS 2 from the original firms list
+  Employment.Avg <- RegionFirmsOriginal[, .(Employees.Avg = mean(Emp)), by = n2]
   FirmsNeeded[Employment.Avg, Employees.Avg := i.Employees.Avg, on = "n2"]
 
   # Calculate number of firms to be sampled
   FirmsNeeded[, N := round(pmax(1, Employees.Difference/Employees.Avg))]
 
-  # Sample the N firms needed for each MESOZONE and NAICS 2 category
-  NewFirms <- FirmsNeeded[, .(N = sum(N)), by = .(MESOZONE, n2)]
+  # Sample the N firms needed for each ZONE and NAICS 2 category
+  NewFirms <- FirmsNeeded[, .(N = sum(N)), by = .(ZONE, n2)]
   set.seed(151)
-  NewFirms <- NewFirms[, .(BusID = sample(x = RegionFirms[n2 == n2.temp,]$BusID, size = N, replace = TRUE)),
-                       by = .(MESOZONE, n2.temp = n2)]
+  NewFirms <- NewFirms[, .(BusID = sample(x = RegionFirmsOriginal[n2 == n2.temp,]$BusID, size = N, replace = TRUE)),
+                       by = .(ZONE, n2.temp = n2)]
   setnames(NewFirms, old = "n2.temp", new = "n2")
 
   # Look up the firm attributes for these new firms (from the ones they were created from)
-  NewFirms <- merge(NewFirms, RegionFirms[, !c("MESOZONE", "n2"), with = FALSE], by = "BusID")
+  NewFirms <- merge(NewFirms, RegionFirmsOriginal[, !c("ZONE", "n2"), with = FALSE], by = "BusID")
 
   # Check that the employee counts of the new firms matches the SE data and scale/bucket round as needed
-  Employment.New <- NewFirms[, .(Employees.NewFirms = sum(Emp)), by = .(MESOZONE, n2)]
-  Employment.New[Employment.SE, Employees.SE := i.Employees.SE, on = c("MESOZONE", "n2")]
+  Employment.New <- NewFirms[, .(Employees.NewFirms = sum(Emp)), by = .(ZONE, n2)]
+  Employment.New[Employment.SE, Employees.SE := i.Employees.SE, on = c("ZONE", "n2")]
   Employment.New[, Adjustment := Employees.SE / Employees.NewFirms]
-  NewFirms[Employment.New[, .(MESOZONE, n2, Adjustment)], Adjustment := i.Adjustment, on = c("MESOZONE", "n2")]
-  NewFirms[, Emp := as.numeric(bucketRound(Emp * Adjustment)), by = .(MESOZONE, n2)]
+  NewFirms[Employment.New[, .(ZONE, n2, Adjustment)], Adjustment := i.Adjustment, on = c("ZONE", "n2")]
+  NewFirms[, Emp := as.numeric(bucketRound(Emp * Adjustment)), by = .(ZONE, n2)]
   NewFirms[, Adjustment := NULL]
   NewFirms <- NewFirms[Emp >= 1]
 

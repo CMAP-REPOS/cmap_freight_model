@@ -142,7 +142,7 @@ firm_synthesis_consumers <- function(io, wholesalers, FirmsDomestic, FirmsForeig
   consumers.wholesalers[, ConVal := OutputCapacityTons * NonTransportUnitCost / BASE_WHOLESALE_COST_FACTOR]
 
   # Remove extra fields
-  consumers.wholesalers[, c("NonTransportUnitCost", "FirmType") := NULL]
+  consumers.wholesalers[, c("NonTransportUnitCost", "FirmType", "TAZ") := NULL]
 
   # Rename fields
   setnames(consumers.wholesalers, c("SellerID","OutputCommodity","OutputCapacityTons", "ProdType"), c("BuyerID","InputCommodity","PurchaseAmountTons", "ConsType"))
