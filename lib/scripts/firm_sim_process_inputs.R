@@ -10,8 +10,6 @@ firm_sim_process_inputs <- function(envir) {
                       c_n6_labels          = file.path(SYSTEM_DATA_PATH, "corresp_naics2007_labels.csv"),  #Correspondence NAICS 2007 at different levels of detail and industry name labels
                       cbp                  = file.path(SYSTEM_DATA_PATH, "data_emp_cbp_2017.csv"),         #CBP data file
                       cbp_ag               = file.path(SYSTEM_DATA_PATH, "data_emp_cbp_ag.csv"),           #CBP data file -- Agriculture records generated seperately
-                      emp_control          = file.path(SYSTEM_DATA_PATH, "data_emp_control_mz.csv"),       #Control totals for emmployment by Mesozone
-                      emp_control_taz      = file.path(SYSTEM_DATA_PATH, "data_emp_control_2017.csv"),     #Control totals for emmployment by TAZ
                       for_prod             = file.path(SYSTEM_DATA_PATH, "data_foreign_prod.csv"),         #Foreign producers
                       for_cons             = file.path(SYSTEM_DATA_PATH, "data_foreign_cons.csv"),         #foreign consumers
                       io                   = file.path(SYSTEM_DATA_PATH, "data_2010io.csv"),
@@ -35,25 +33,30 @@ firm_sim_process_inputs <- function(envir) {
   
   ### Process project input files
   
-  # Define additional variables for firm synthesis
-  # Employment ranges: assume upper bound for the largest size (>5000) is 10,000 
-  # to conform to earlier assumption of midpoint being 7,500
-  envir[["EmpBounds"]] <- c(1, 20, 100, 250, 500, 1000, 2500, 5000, 10000)
-  
-  # Employment targets: replace the within CMAP portion in MZ with values rolled up from TAZ
-  envir[["emp_control"]] <- rbind(envir[["emp_control_taz"]][,.(Employment = sum(Employment, na.rm = TRUE)), keyby = .(Mesozone, NAICS)],
-                                  envir[["emp_control"]][Mesozone >= 150])
-  
-  # Correspondence between TAZ and MZ based on employment data
-  envir[["c_taz_mz"]] <- unique(envir$emp_control_taz[,.(TAZ = Zone17, Mesozone)])
-  
   ### TODO test without this conversion
   # Convert unit costs to pounds so that capacities and requirements are in pounds
   # envir[["unitcost"]][, UnitCost := UnitCost / 2000]
   
   ### Load scenario input files
+  scenario.files <- c( emp_control          = file.path(SCENARIO_INPUT_PATH, "data_emp_control_mz.csv"),       #Control totals for emmployment by Mesozone
+                      emp_control_taz      = file.path(SCENARIO_INPUT_PATH, "data_emp_control_2017.csv"))     #Control totals for emmployment by TAZ
+  
+  loadInputs(files = scenario.files, envir = envir)
   
   ### Process scenario input files
+  
+  # Employment targets: replace the within CMAP portion in MZ with values rolled up from TAZ
+  envir[["emp_control"]] <- rbind(envir[["emp_control_taz"]][,.(Employment = sum(Employment, na.rm = TRUE)), keyby = .(Mesozone, NAICS)],
+                                  envir[["emp_control"]][Mesozone >= 150])
+  
+  ### Define additional variables
+  
+  # Correspondence between TAZ and MZ based on employment data
+  envir[["c_taz_mz"]] <- unique(envir$emp_control_taz[,.(TAZ = Zone17, Mesozone)])
+  
+  # Employment ranges: assume upper bound for the largest size (>5000) is 10,000 
+  # to conform to earlier assumption of midpoint being 7,500
+  envir[["EmpBounds"]] <- c(1, 20, 100, 250, 500, 1000, 2500, 5000, 10000)
   
   ### Return the cbp table
   cbp <- envir[["cbp"]]
