@@ -10,7 +10,8 @@ sc_sim_process_inputs <- function(envir) {
                      mode_description           = file.path(SYSTEM_DATA_PATH, "data_mode_description.csv"), # Mode desciption
                      pc_domestic_targets        = file.path(SYSTEM_DATA_PATH, "domestictargets.csv"),
                      pc_international_targets   = file.path(SYSTEM_DATA_PATH, "foreigndomestictargets.csv"),
-                     FAF_DISTANCE               = file.path(SYSTEM_DATA_PATH, "data_faf_distance.csv"),
+                     FAF_TON_DIST               = file.path(SYSTEM_DATA_PATH, "data_faf_ton_distribution.csv"),
+                     FAF_TON_TRADETYPE          = file.path(SYSTEM_DATA_PATH, "data_faf_ton_tradetype.csv"),
                      mesozone_gcd               = file.path(SYSTEM_DATA_PATH, "data_mesozone_gcd.csv"),  #Mesozone to mesozone gcds
                      shipsize                   = file.path(SYSTEM_DATA_PATH, "data_commodity_shipmentsizes.csv"),
                      skims                      = file.path(SYSTEM_DATA_PATH, "data_modepath_skims.csv"),
