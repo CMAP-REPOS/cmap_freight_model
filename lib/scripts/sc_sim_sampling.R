@@ -107,6 +107,10 @@ sc_sim_sampling <- function(naics_set){
 
 create_prod_cons_combinations <- function(market, g, check_feasibility = FALSE){
   
+  ### TODO review the function for field naming, distance and mode sampling
+  ### remove calls to checks on sample groups (dealt with in PMG) --leave as optional with a global setting
+  
+  
   # load the market
   # load(file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, ".Rdata")))
   conscg <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_consc.fst")),
