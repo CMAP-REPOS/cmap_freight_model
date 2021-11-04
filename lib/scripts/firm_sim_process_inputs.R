@@ -10,8 +10,6 @@ firm_sim_process_inputs <- function(envir) {
                       c_n6_labels          = file.path(SYSTEM_DATA_PATH, "corresp_naics2007_labels.csv"),  #Correspondence NAICS 2007 at different levels of detail and industry name labels
                       cbp                  = file.path(SYSTEM_DATA_PATH, "data_emp_cbp_2017.csv"),         #CBP data file
                       cbp_ag               = file.path(SYSTEM_DATA_PATH, "data_emp_cbp_ag.csv"),           #CBP data file -- Agriculture records generated seperately
-                      for_prod             = file.path(SYSTEM_DATA_PATH, "data_foreign_prod.csv"),         #Foreign producers
-                      for_cons             = file.path(SYSTEM_DATA_PATH, "data_foreign_cons.csv"),         #foreign consumers
                       io                   = file.path(SYSTEM_DATA_PATH, "data_2010io.csv"),
                       unitcost             = file.path(SYSTEM_DATA_PATH, "data_unitcost.csv"),
                       prefweights          = file.path(SYSTEM_DATA_PATH, "data_firm_pref_weights.csv"),
@@ -38,8 +36,10 @@ firm_sim_process_inputs <- function(envir) {
   # envir[["unitcost"]][, UnitCost := UnitCost / 2000]
   
   ### Load scenario input files
-  scenario.files <- c( emp_control          = file.path(SCENARIO_INPUT_PATH, "data_emp_control_mz.csv"),       #Control totals for emmployment by Mesozone
-                      emp_control_taz      = file.path(SCENARIO_INPUT_PATH, "data_emp_control_2017.csv"))     #Control totals for emmployment by TAZ
+  scenario.files <- c(emp_control          = file.path(SCENARIO_INPUT_PATH, "data_emp_control_mz.csv"),       #Control totals for emmployment by Mesozone
+                      emp_control_taz      = file.path(SCENARIO_INPUT_PATH, "data_emp_control_2017.csv"),     #Control totals for emmployment by TAZ
+                      for_prod             = file.path(SCENARIO_INPUT_PATH, "data_foreign_prod.csv"),         #Foreign producers
+                      for_cons             = file.path(SCENARIO_INPUT_PATH, "data_foreign_cons.csv"))         #foreign consumers                                      
   
   loadInputs(files = scenario.files, envir = envir)
   
