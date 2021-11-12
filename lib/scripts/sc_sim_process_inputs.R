@@ -14,7 +14,6 @@ sc_sim_process_inputs <- function(envir) {
                      FAF_TON_TRADETYPE          = file.path(SYSTEM_DATA_PATH, "data_faf_ton_tradetype.csv"),
                      mesozone_gcd               = file.path(SYSTEM_DATA_PATH, "data_mesozone_gcd.csv"),  #Mesozone to mesozone gcds
                      shipsize                   = file.path(SYSTEM_DATA_PATH, "data_commodity_shipmentsizes.csv"),
-                     skims                      = file.path(SYSTEM_DATA_PATH, "data_modepath_skims.csv"),
                      skims_airports             = file.path(SYSTEM_DATA_PATH, "data_modepath_airports.csv"),
                      skims_ports                = file.path(SYSTEM_DATA_PATH, "data_modepath_ports.csv"),
                      Supplier_Selection_Distribution = file.path(SYSTEM_DATA_PATH, "data_faf_ton_distribution.csv"),
@@ -50,7 +49,9 @@ sc_sim_process_inputs <- function(envir) {
   setkey(envir[["FAF_DISTANCE"]],oFAFZONE,dFAFZONE)
   
   ### Load and process scenario input files
+  scenario.files <- c(skims                      = file.path(SYSTEM_DATA_PATH, "data_modepath_skims.csv"))                                      
   
+  loadInputs(files = scenario.files, envir = envir)
   
   ### Load inputs/outputs from earlier steps
   load(file.path(SCENARIO_OUTPUT_PATH, "naics_set.Rdata"))
