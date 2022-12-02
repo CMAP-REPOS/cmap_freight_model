@@ -9,6 +9,7 @@ BASE_SCENARIO_BASE_YEAR <- 2015 #base year scenario year
 BASE_SCENARIO_YEARS <- c(2015, 2020, 2025, 2030, 2035, 2040, 2045) 
 
 # Define other application parameters
+BASE_NEW_FIRMS_PROP <- 0.3 #proportion of growth in employment in already developed TAZs that comes from new firm formation as opposed to existing firm growth
 BASE_PROVALTHRESHOLD <- 0.8 #production value threshold for supplier selection
 BASE_FOREIGN_PROD_COST_FACTOR <- 0.9 # producer cost factor for foreign produers (applied to unit costs)
 BASE_FOREIGN_FIRM_SIZE_LIMIT <- 500000000 # production capacity limit or consumption requirement limit in pounds for foreign firms

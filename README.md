@@ -5,7 +5,7 @@ After annual commodity flows between individual firms are developed in the natio
 
 # modelDevelopment branch
 Working version of the code that:
-- update includes updates to transition the code to working in R Version 4.0 and with rFreight version 0.1-30
+- update includes updates to transition the code to working in R Version 4.1.2 and with rFreight version 0.1-34
 - incorporates updates to a consistent code structure for all model components
 - transitions the PMG to open R code format as opposed to a compiled C++ application
 - adds a visualization dashboard to view scenario results from the supply chain model
