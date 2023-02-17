@@ -18,5 +18,4 @@ USER_COMMODITIES_RUN <- c(1:3) # Commodities to run if running partial market ru
 
 # Testing/calibration settings
 USER_RUN_MODE <- "Application" # What type of run is being done? Options are "Application" or "Calibration" where calibration triggers certain model components to run iterative adjustments
-USER_CALIBRATION_MODE <- "Distchannel" # What does the user want to calibrate? Options are "Distchannel" or "ModeChoice"
 USER_RUN_TEST <- "None" # What type of test is being done? Options are "None", "Sensitivity", "Parameters"
