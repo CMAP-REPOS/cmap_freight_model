@@ -9,13 +9,13 @@ firm_sim_process_inputs <- function(envir) {
                       c_cbp_mz             = file.path(SYSTEM_DATA_PATH, "corresp_mesozone_cbpzone.csv"),  # Correspondence between CBP and Mesozone zone systems
                       c_mz_faf_reg         = file.path(SYSTEM_DATA_PATH, "corresp_meso_faf3_region.csv"),  # Correspondence between Mesozones, FAF3, and census regions for summaries
                       c_n6_labels          = file.path(SYSTEM_DATA_PATH, "corresp_naics2007_labels.csv"),  # Correspondence NAICS 2007 at different levels of detail and industry name labels
-                      cbp                  = file.path(SYSTEM_DATA_PATH, "data_emp_cbp_2017.csv"),         # CBP data file
-                      cbp_ag               = file.path(SYSTEM_DATA_PATH, "data_emp_cbp_ag.csv"),           #CBP data file -- Agriculture records generated seperately
+                      cbp                  = file.path(SYSTEM_DATA_PATH, "data_emp_cbp.csv"),              # CBP data file
+                      cbp_ag               = file.path(SYSTEM_DATA_PATH, "data_emp_cbp_ag.csv"),           # CBP data file -- Agriculture records generated seperately
                       EstSizeCategories    = file.path(SYSTEM_DATA_PATH, "data_est_size_categories.csv"),  # Establishment size categories and labels
                       io                   = file.path(SYSTEM_DATA_PATH, "data_2010io.csv"),
                       unitcost             = file.path(SYSTEM_DATA_PATH, "data_unitcost.csv"),
                       prefweights          = file.path(SYSTEM_DATA_PATH, "data_firm_pref_weights.csv"),
-                      mzemp                = file.path(SYSTEM_DATA_PATH, "data_mesozone_emprankings.csv"), #Industry rankings data by mesozone based on employment
+                      mzemp                = file.path(SYSTEM_DATA_PATH, "data_mesozone_emprankings.csv"), # Industry rankings data by mesozone based on employment
                       TAZ_System           = file.path(SYSTEM_DATA_PATH, "TAZ_System.csv"),                # TAZ system 
                       firm_sim_commodities       = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_commodities.R"),
                       firm_sim_consumers         = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_consumers.R"),
@@ -131,7 +131,7 @@ firm_sim_process_inputs <- function(envir) {
   
   ### Load scenario input files
   scenario.files <- c(emp_control          = file.path(SCENARIO_INPUT_PATH, "data_emp_control_mz.csv"),       #Control totals for emmployment by Mesozone
-                      emp_control_taz      = file.path(SCENARIO_INPUT_PATH, "data_emp_control_2017.csv"),     #Control totals for emmployment by TAZ
+                      emp_control_taz      = file.path(SCENARIO_INPUT_PATH, "data_emp_control_taz.csv"),          #Control totals for emmployment by TAZ
                       for_prod             = file.path(SCENARIO_INPUT_PATH, "data_foreign_prod.csv"),         #Foreign producers
                       for_cons             = file.path(SCENARIO_INPUT_PATH, "data_foreign_cons.csv"))         #foreign consumers                                      
   
