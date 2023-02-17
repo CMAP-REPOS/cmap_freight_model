@@ -16,6 +16,7 @@ firm_sim_process_inputs <- function(envir) {
                       unitcost             = file.path(SYSTEM_DATA_PATH, "data_unitcost.csv"),
                       prefweights          = file.path(SYSTEM_DATA_PATH, "data_firm_pref_weights.csv"),
                       mzemp                = file.path(SYSTEM_DATA_PATH, "data_mesozone_emprankings.csv"), #Industry rankings data by mesozone based on employment
+                      TAZ_System           = file.path(SYSTEM_DATA_PATH, "TAZ_System.csv"),                # TAZ system 
                       firm_sim_commodities       = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_commodities.R"),
                       firm_sim_consumers         = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_consumers.R"),
                       firm_sim_enumerate         = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_enumerate.R"),
@@ -34,103 +35,99 @@ firm_sim_process_inputs <- function(envir) {
   ### Process project input files
   envir[["UEmpCats"]]  <- unique(envir[["c_n2_empcats"]][,.(EmpCatName = as.character(EmpCatName), EmpCatDesc, EmpCatGroupedName)])
   
-  ### TODO test without this conversion
-  # Convert unit costs to pounds so that capacities and requirements are in pounds
-  # envir[["unitcost"]][, UnitCost := UnitCost / 2000]
+  # For the base scenario need to process the input CBP data into the format required by the model
+  if(SCENARIO_NAME == BASE_SCENARIO_BASE_NAME){
+    # Combine Domestic Non Ag Firm Records with the Ag Firm Records
+    # Remove any ag records in cbp and replacing with cbp_ag  
+    cbp <- rbind(envir[["cbp"]][Industry_NAICS6_CBP >= 113110],
+                 envir[["cbp_ag"]])
+    
+    # Identify the region data for the 21 county CMAP region
+    # For the 21 counties, CBPZONE == county FIPS code
+    # Remove records with missing zones and NAICS codes
+    cbp[, CMAP21 := ifelse(CBPZONE %in% BASE_FIPS_INTERNAL,1,0)]
+    cbp <- cbp[!is.na(FAFZONE) & !is.na(Industry_NAICS6_CBP)]
+    
+    # Aggregate by zones, NAICS, and firm size category (should already conform to this grouping)
+    cbp <- cbp[,.(establishment = sum(establishment),
+                  e1 = sum(e1), e2 = sum(e2), e3 = sum(e3), e4 = sum(e4),
+                  e5 = sum(e5), e6 = sum(e6), e7 = sum(e7), e8 = sum(e8)),
+               by = .(NAICS6 = Industry_NAICS6_CBP, CBPZONE, CMAP21)]
+    
+    # Add 2 digit NAICS and the EmpCatName used in the model
+    cbp[, NAICS2 := substr(NAICS6, 1, 2)]
+    cbp[envir[["c_n2_empcats"]][,.(NAICS2 = as.character(NAICS2), EmpCatName = as.character(EmpCatName))], 
+        EmpCatName := i.EmpCatName, on = "NAICS2"]
+    
+    # Account for missing establishments by size category
+    cbp[, est_cat_sum := e1+e2+e3+e4+e5+e6+e7+e8]
+    cbp[, est_cat_miss := establishment - est_cat_sum]
+    cbp[est_cat_miss < 0, est_cat_miss := 0] # should not happen
+    
+    # Summarize size distributions by NAISC2 and draw from for missing est
+    cbpn2 <- cbp[,.(e1 = sum(e1), e2 = sum(e2), e3 = sum(e3), e4 = sum(e4),
+                    e5 = sum(e5), e6 = sum(e6), e7 = sum(e7), e8 = sum(e8)),
+                 by = .(NAICS2)]
+    
+    cbpn2 <- melt.data.table(cbpn2,
+                             measure.vars = paste0("e",1:8),
+                             variable.name ="esizecat",
+                             value.name = "est")
+    cbpn2[, pest := est/sum(est), by = NAICS2]
+    cbpn2[, intest := as.integer(gsub("e","", esizecat))]
+    
+    cbp_extra <- list()
+    for(n2 in unique(cbpn2$NAICS2)){
+      cbp_extra_n2 <- cbp[NAICS2 == n2 & est_cat_miss > 0,
+                          .(NAICS6, CBPZONE, establishment, est_cat_sum, est_cat_miss, NAICS2, EmpCatName)]
+      if(nrow(cbp_extra_n2)>0){
+        cbp_extra_n2[, ID := .I]
+        cbpn2i = cbpn2[NAICS2 == n2]
+        cbp_extra_n2_samp <- lapply(1:nrow(cbp_extra_n2), 
+                                    function(x) {
+                                      samp = sample(x = cbpn2i$intest,
+                                                    size = cbp_extra_n2[x]$est_cat_miss,
+                                                    replace = TRUE,
+                                                    prob = cbpn2i$pest)
+                                      tab = data.table(table(samp))})      
+        cbp_extra_n2_samp <- rbindlist(cbp_extra_n2_samp, idcol = "ID")
+        cbp_extra_n2_samp[, esizecat := paste0("e",samp)]
+        setnames(cbp_extra_n2_samp, "N", "est")
+        cbp_extra_n2 <- merge(cbp_extra_n2[, .(NAICS6, CBPZONE, CMAP21, EmpCatName, ID)],
+                              cbp_extra_n2_samp[,.(ID, est, esizecat)],
+                              by = "ID", allow.cartesian = TRUE)
+      }
+      cbp_extra[[n2]] <- cbp_extra_n2
+    }
+    
+    cbp_extra <- rbindlist(cbp_extra)
+    cbp_extra[, ID := NULL]
+    
+    # Remove unecessary fields and format to match cbp_extra
+    cbp[, c("NAICS2", "establishment", "est_cat_sum", "est_cat_miss") := NULL]
+    
+    # Melt to create separate rows for each firm size category
+    cbp <- melt.data.table(cbp,
+                           measure.vars = paste0("e",1:8),
+                           variable.name ="esizecat",
+                           value.name = "est")
+    
+    # Combine with cbp extra and summarize
+    cbp <- rbind(cbp, cbp_extra)
+    cbp <- cbp[, .(est = sum(est)), keyby = .(NAICS6, CBPZONE, CMAP21, EmpCatName, esizecat)]
+    
+    # Convert esizecat to an integer (1:8)
+    cbp[, esizecat := as.integer(esizecat)]
+    
+  } else {
+    
+    # for alternative scenarios, will not be using the CBP data, instead updating base year firms
+    cbp <- NULL
+    
+  }
   
-  # # For the base scenario need to process the input CBP data into the format required by the model
-  # if(SCENARIO_NAME == BASE_SCENARIO_BASE_NAME){
-  #   # Combine Domestic Non Ag Firm Records with the Ag Firm Records
-  #   # Remove any ag records in cbp and replacing with cbp_ag  
-  #   cbp <- rbind(envir[["cbp"]][Industry_NAICS6_CBP >= 113110],
-  #                envir[["cbp_ag"]])
-  #   
-  #   ### TODO Generalize to National Data!
-  #   # Extract just the region data for the 21 county CMAP region
-  #   # For the 21 counties, CBPZONE == county FIPS code
-  #   # Remove records with missing zones and NAICS codes
-  #   cbp <- cbp[CBPZONE %in% BASE_FIPS_INTERNAL & !is.na(FAFZONE) & !is.na(Industry_NAICS6_CBP)]
-  #   
-  #   # Aggregate by zones, NAICS, and firm size category (should already conform to this grouping)
-  #   cbp <- cbp[,.(establishment = sum(establishment),
-  #                 e1 = sum(e1), e2 = sum(e2), e3 = sum(e3), e4 = sum(e4),
-  #                 e5 = sum(e5), e6 = sum(e6), e7 = sum(e7), e8 = sum(e8)),
-  #              by = .(NAICS6 = Industry_NAICS6_CBP, CountyFIPS = CBPZONE)]
-  #   
-  #   # Add 2 digit NAICS and the EmpCatName used in the model
-  #   cbp[, NAICS2 := substr(NAICS6, 1, 2)]
-  #   cbp[envir[["c_n2_empcats"]][,.(NAICS2 = as.character(NAICS2), EmpCatName = as.character(EmpCatName))], 
-  #       EmpCatName := i.EmpCatName, on = "NAICS2"]
-  #   
-  #   # Account for missing establishments by size category
-  #   cbp[, est_cat_sum := e1+e2+e3+e4+e5+e6+e7+e8]
-  #   cbp[, est_cat_miss := establishment - est_cat_sum]
-  #   cbp[est_cat_miss < 0, est_cat_miss := 0] # should not happen
-  #   
-  #   # Summarize size distributions by NAISC2 and draw from for missing est
-  #   cbpn2 <- cbp[,.(e1 = sum(e1), e2 = sum(e2), e3 = sum(e3), e4 = sum(e4),
-  #                   e5 = sum(e5), e6 = sum(e6), e7 = sum(e7), e8 = sum(e8)),
-  #                by = .(NAICS2)]
-  #   
-  #   cbpn2 <- melt.data.table(cbpn2,
-  #                            measure.vars = paste0("e",1:8),
-  #                            variable.name ="esizecat",
-  #                            value.name = "est")
-  #   cbpn2[, pest := est/sum(est), by = NAICS2]
-  #   cbpn2[, intest := as.integer(gsub("e","", esizecat))]
-  #   
-  #   cbp_extra <- list()
-  #   for(n2 in unique(cbpn2$NAICS2)){
-  #     cbp_extra_n2 <- cbp[NAICS2 == n2 & est_cat_miss > 0,
-  #                         .(NAICS6, CountyFIPS, establishment, est_cat_sum, est_cat_miss, NAICS2, EmpCatName)]
-  #     if(nrow(cbp_extra_n2)>0){
-  #       cbp_extra_n2[, ID := .I]
-  #       cbpn2i = cbpn2[NAICS2 == n2]
-  #       cbp_extra_n2_samp <- lapply(1:nrow(cbp_extra_n2), 
-  #                                   function(x) {
-  #                                     samp = sample(x = cbpn2i$intest,
-  #                                                   size = cbp_extra_n2[x]$est_cat_miss,
-  #                                                   replace = TRUE,
-  #                                                   prob = cbpn2i$pest)
-  #                                     tab = data.table(table(samp))})      
-  #       cbp_extra_n2_samp <- rbindlist(cbp_extra_n2_samp, idcol = "ID")
-  #       cbp_extra_n2_samp[, esizecat := paste0("e",samp)]
-  #       setnames(cbp_extra_n2_samp, "N", "est")
-  #       cbp_extra_n2 <- merge(cbp_extra_n2[, .(NAICS6, CountyFIPS, EmpCatName, ID)],
-  #                             cbp_extra_n2_samp[,.(ID, est, esizecat)],
-  #                             by = "ID", allow.cartesian = TRUE)
-  #     }
-  #     cbp_extra[[n2]] <- cbp_extra_n2
-  #   }
-  #   
-  #   cbp_extra <- rbindlist(cbp_extra)
-  #   cbp_extra[, ID := NULL]
-  #   
-  #   # Remove unecessary fields and format to match cbp_extra
-  #   cbp[, c("NAICS2", "establishment", "est_cat_sum", "est_cat_miss") := NULL]
-  #   
-  #   # Melt to create separate rows for each firm size category
-  #   cbp <- melt.data.table(cbp,
-  #                          measure.vars = paste0("e",1:8),
-  #                          variable.name ="esizecat",
-  #                          value.name = "est")
-  #   
-  #   # Combine with cbp extra and summarize
-  #   cbp <- rbind(cbp, cbp_extra)
-  #   cbp <- cbp[, .(est = sum(est)), keyby = .(NAICS6, CountyFIPS, EmpCatName, esizecat)]
-  #   
-  #   # Convert esizecat to an integer (1:8)
-  #   cbp[, esizecat := as.integer(esizecat)]
-  #   
-  # } else {
-  #   
-  #   # for alternative scenarios, will not be using the CBP data, instead updating base year firms
-  #   cbp <- NULL
-  #   
-  # }
-  # 
-  # # remove the CBP data from the environment
-  # rm(cbp, cbp_ag, envir = envir)
+  # remove the CBP data from the environment
+  rm(cbp, cbp_ag, envir = envir)
   
   ### Load scenario input files
   scenario.files <- c(emp_control          = file.path(SCENARIO_INPUT_PATH, "data_emp_control_mz.csv"),       #Control totals for emmployment by Mesozone
@@ -160,11 +157,7 @@ firm_sim_process_inputs <- function(envir) {
   # Correspondence between TAZ and MZ based on employment data
   envir[["c_taz_mz"]] <- unique(envir$emp_control_taz[,.(TAZ = Zone17, Mesozone)])
   
-  
   ### Return the cbp table
-  cbp <- envir[["cbp"]]
-  rm(cbp, envir = envir)
-  
   return(cbp)
   
 }
