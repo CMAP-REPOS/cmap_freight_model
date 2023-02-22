@@ -130,8 +130,9 @@ firm_sim_process_inputs <- function(envir) {
   rm(cbp, cbp_ag, envir = envir)
   
   ### Load scenario input files
-  scenario.files <- c(emp_control          = file.path(SCENARIO_INPUT_PATH, "data_emp_control_mz.csv"),       #Control totals for emmployment by Mesozone
-                      emp_control_taz      = file.path(SCENARIO_INPUT_PATH, "data_emp_control_taz.csv"),          #Control totals for emmployment by TAZ
+  scenario.files <- c(MZEmployment         = file.path(SCENARIO_INPUT_PATH, "data_emp_control_mz.csv"),       #Control totals for emmployment by Mesozone
+                      TAZEmployment        = file.path(SCENARIO_INPUT_PATH, "data_emp_control_taz.csv"),      #Control totals for emmployment by TAZ
+                      TAZHH                = file.path(SCENARIO_INPUT_PATH, "data_hh.csv"),                   #CMAP model region HHs summarized at the TAZ level
                       for_prod             = file.path(SCENARIO_INPUT_PATH, "data_foreign_prod.csv"),         #Foreign producers
                       for_cons             = file.path(SCENARIO_INPUT_PATH, "data_foreign_cons.csv"))         #foreign consumers                                      
   
@@ -140,22 +141,40 @@ firm_sim_process_inputs <- function(envir) {
   ### Process scenario input files
   
   # Employment targets: replace the within CMAP portion in MZ with values rolled up from TAZ
-  envir[["emp_control"]] <- rbind(envir[["emp_control_taz"]][,.(Employment = sum(Employment, na.rm = TRUE)), keyby = .(Mesozone, NAICS)],
-                                  envir[["emp_control"]][Mesozone >= 150])
+  ### TODO switch this to run at the TAZ level within CMAP exactly like the CSVM firm synthesis
+  ### outside CMAP continue to use the MZ level (equivalent to FAF zones outside CMAP)
   
-  ### TODO incorporate this for consistency with the CSVM firm synthesis and to use rFreight functions
-  # # Naming and data type of control employment data
-  # setnames(envir[["TAZEmployment"]], 
-  #          c("Zone17", "NAICS", "Employment"), 
-  #          c("TAZ", "EmpCatName", "Employees.SE"))
-  # 
-  # envir[["TAZEmployment"]][, EmpCatName := as.character(EmpCatName)]
-  
-  
-  ### Define additional variables
+  envir[["emp_control"]] <- rbind(envir[["TAZEmployment"]][,.(Employment = sum(Employment, na.rm = TRUE)), keyby = .(Mesozone, NAICS)],
+                                  envir[["MZEmployment"]][Mesozone >= 150])
   
   # Correspondence between TAZ and MZ based on employment data
   envir[["c_taz_mz"]] <- unique(envir$emp_control_taz[,.(TAZ = Zone17, Mesozone)])
+  
+  # Naming and data type of control employment data
+  setnames(envir[["TAZEmployment"]], 
+           c("Zone17", "NAICS", "Employment"), 
+           c("TAZ", "EmpCatName", "Employees.SE"))
+  
+  envir[["TAZEmployment"]][, EmpCatName := as.character(EmpCatName)]
+  
+  ### TODO if this is just for the CSVM (and FTTM?) do this just for the CMAP model region?
+  
+  # Create a summarized version of the employment data with employment grouping categories in wide format
+  envir[["TAZLandUseCVTM"]] <- add_totals(dcast.data.table(merge(envir[["TAZEmployment"]][, .(TAZ, Mesozone, CountyFIPS, 
+                                                                                              EmpCatName, Employees.SE)],
+                                                                 envir[["UEmpCats"]],
+                                                                 by = "EmpCatName"),
+                                                           TAZ + Mesozone + CountyFIPS ~ EmpCatGroupedName,
+                                                           fun.aggregate = sum,
+                                                           value.var = "Employees.SE"),
+                                          idcols = 3L,
+                                          coltotal = FALSE)
+  
+  setnames(envir[["TAZLandUseCVTM"]], 
+           names(envir[["TAZLandUseCVTM"]])[4:ncol(envir[["TAZLandUseCVTM"]])],
+           paste("NEmp", names(envir[["TAZLandUseCVTM"]])[4:ncol(envir[["TAZLandUseCVTM"]])], sep = "_"))
+  
+  envir[["TAZLandUseCVTM"]][envir[["TAZHH"]][,.(TAZ = Zone17, HH)], HH := i.HH, on = "TAZ"]
   
   ### Return the cbp table
   return(cbp)
