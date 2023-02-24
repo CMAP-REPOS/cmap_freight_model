@@ -12,6 +12,7 @@ rm(TAZ_System)
 
 # National and international zone ranges
 BASE_MZ_DOMESTIC <- 1L:273L #range of Mesozones that covers the USA
+BASE_MZ_NATIONAL <- BASE_MZ_DOMESTIC[!BASE_MZ_DOMESTIC %in% BASE_MZ_INTERNAL] #range of Mesozones that covers the USA outside the CMAP model region
 BASE_MZ_INTERNATIONAL <- 274L:1000L #range of Mesozones covering foreign countries
 
 # Define application time periods, run years, and other temporal inputs

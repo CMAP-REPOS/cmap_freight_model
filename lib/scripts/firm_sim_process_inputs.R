@@ -142,6 +142,14 @@ firm_sim_process_inputs <- function(envir) {
   
   # Update fieldnames/datatypes for consistency
   
+  # Add the MZ Employment from outside the model region to the TAZ Employment
+  envir[["TAZEmployment"]] <- rbind(envir[["TAZEmployment"]],
+                                    envir[["MZEmployment"]][!Mesozone %in% BASE_MZ_INTERNAL],
+                                    fill = TRUE)
+  
+  # remove the  MZ Employment data from the environment
+  rm(MZEmployment, envir = envir)
+  
   # Naming and data type of control employment data
   setnames(envir[["TAZEmployment"]], 
            c("Zone17", "NAICS", "Employment"), 
@@ -149,15 +157,12 @@ firm_sim_process_inputs <- function(envir) {
   
   envir[["TAZEmployment"]][, EmpCatName := as.character(EmpCatName)]
   
-  # Also rename the MZ Employment (TAZ is required name for zone label in scaling function)
-  setnames(envir[["MZEmployment"]], 
-           c("Mesozone", "NAICS", "Employment"), 
-           c("TAZ", "EmpCatName", "Employees.SE"))
+  # Add TAZ field to the external MZs (value of the maximum TAZ + Mesozone)
+  envir[["TAZEmployment"]][!Mesozone %in% BASE_MZ_INTERNAL, TAZ := Mesozone + max(BASE_TAZ_INTERNAL)]
   
-  envir[["MZEmployment"]][, EmpCatName := as.character(EmpCatName)]
-  
-  # Create a summarized version of the employment data with employment grouping categories in wide format
-  envir[["TAZLandUseCVTM"]] <- add_totals(dcast.data.table(merge(envir[["TAZEmployment"]][, .(TAZ, Mesozone, CountyFIPS, 
+  # Create a summarized version of the CMAP model region employment data with employment grouping categories in wide format
+  envir[["TAZLandUseCVTM"]] <- add_totals(dcast.data.table(merge(envir[["TAZEmployment"]][TAZ %in% BASE_TAZ_INTERNAL,
+                                                                                          .(TAZ, Mesozone, CountyFIPS, 
                                                                                               EmpCatName, Employees.SE)],
                                                                  envir[["UEmpCats"]],
                                                                  by = "EmpCatName"),

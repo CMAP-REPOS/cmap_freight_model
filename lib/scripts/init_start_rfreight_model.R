@@ -19,6 +19,3 @@ initializeApp(rFreight.path = SYSTEM_RFREIGHT_PATH,
               lib = SYSTEM_PKGS_PATH,
               packages = c(SYSTEM_PKGS, SYSTEM_REPORT_PKGS),
               reload.rFreight = FALSE)
-
-# Load any other scripts of general functions for use in the model
-source(file.path(SYSTEM_SCRIPTS_PATH, "init_future_task_processor.R"))
