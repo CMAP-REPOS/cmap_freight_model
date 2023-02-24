@@ -79,7 +79,7 @@ firm_sim_process_inputs <- function(envir) {
     cbp_extra <- list()
     for(n2 in unique(cbpn2$NAICS2)){
       cbp_extra_n2 <- cbp[NAICS2 == n2 & est_cat_miss > 0,
-                          .(NAICS6, CBPZONE, establishment, est_cat_sum, est_cat_miss, NAICS2, EmpCatName)]
+                          .(NAICS6, CBPZONE, CMAP21, establishment, est_cat_sum, est_cat_miss, NAICS2, EmpCatName)]
       if(nrow(cbp_extra_n2)>0){
         cbp_extra_n2[, ID := .I]
         cbpn2i = cbpn2[NAICS2 == n2]
@@ -140,15 +140,7 @@ firm_sim_process_inputs <- function(envir) {
   
   ### Process scenario input files
   
-  # Employment targets: replace the within CMAP portion in MZ with values rolled up from TAZ
-  ### TODO switch this to run at the TAZ level within CMAP exactly like the CSVM firm synthesis
-  ### outside CMAP continue to use the MZ level (equivalent to FAF zones outside CMAP)
-  
-  envir[["emp_control"]] <- rbind(envir[["TAZEmployment"]][,.(Employment = sum(Employment, na.rm = TRUE)), keyby = .(Mesozone, NAICS)],
-                                  envir[["MZEmployment"]][Mesozone >= 150])
-  
-  # Correspondence between TAZ and MZ based on employment data
-  envir[["c_taz_mz"]] <- unique(envir$emp_control_taz[,.(TAZ = Zone17, Mesozone)])
+  # Update fieldnames/datatypes for consistency
   
   # Naming and data type of control employment data
   setnames(envir[["TAZEmployment"]], 
@@ -157,7 +149,12 @@ firm_sim_process_inputs <- function(envir) {
   
   envir[["TAZEmployment"]][, EmpCatName := as.character(EmpCatName)]
   
-  ### TODO if this is just for the CSVM (and FTTM?) do this just for the CMAP model region?
+  # Also rename the MZ Employment (TAZ is required name for zone label in scaling function)
+  setnames(envir[["MZEmployment"]], 
+           c("Mesozone", "NAICS", "Employment"), 
+           c("TAZ", "EmpCatName", "Employees.SE"))
+  
+  envir[["MZEmployment"]][, EmpCatName := as.character(EmpCatName)]
   
   # Create a summarized version of the employment data with employment grouping categories in wide format
   envir[["TAZLandUseCVTM"]] <- add_totals(dcast.data.table(merge(envir[["TAZEmployment"]][, .(TAZ, Mesozone, CountyFIPS, 
