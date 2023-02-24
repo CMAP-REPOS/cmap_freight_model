@@ -7,6 +7,7 @@ firm_sim_process_inputs <- function(envir) {
                       c_n6_n6io_sctg       = file.path(SYSTEM_DATA_PATH, "corresp_naics6_n6io_sctg.csv"),  # Correspondence between NAICS 6-digit, I/O NAICS, and SCTG
                       c_cbp_faf            = file.path(SYSTEM_DATA_PATH, "corresp_fafzone_cbpzone.csv"),   # Correspondence between CBP and FAF zone systems
                       c_cbp_mz             = file.path(SYSTEM_DATA_PATH, "corresp_mesozone_cbpzone.csv"),  # Correspondence between CBP and Mesozone zone systems
+                      c_fips_faf           = file.path(SYSTEM_DATA_PATH, "corresp_countyfips_faf.csv"),    # Correspondence between Counties and FAF zones
                       c_mz_faf_reg         = file.path(SYSTEM_DATA_PATH, "corresp_meso_faf3_region.csv"),  # Correspondence between Mesozones, FAF3, and census regions for summaries
                       c_n6_labels          = file.path(SYSTEM_DATA_PATH, "corresp_naics2007_labels.csv"),  # Correspondence NAICS 2007 at different levels of detail and industry name labels
                       cbp                  = file.path(SYSTEM_DATA_PATH, "data_emp_cbp.csv"),              # CBP data file
@@ -130,7 +131,7 @@ firm_sim_process_inputs <- function(envir) {
   rm(cbp, cbp_ag, envir = envir)
   
   ### Load scenario input files
-  scenario.files <- c(MZEmployment         = file.path(SCENARIO_INPUT_PATH, "data_emp_control_mz.csv"),       #Control totals for emmployment by Mesozone
+  scenario.files <- c(CountyEmployment     = file.path(SCENARIO_INPUT_PATH, "data_emp_control_county.csv"),   #Control totals for emmployment by county for all USA
                       TAZEmployment        = file.path(SCENARIO_INPUT_PATH, "data_emp_control_taz.csv"),      #Control totals for emmployment by TAZ
                       TAZHH                = file.path(SCENARIO_INPUT_PATH, "data_hh.csv"),                   #CMAP model region HHs summarized at the TAZ level
                       for_prod             = file.path(SCENARIO_INPUT_PATH, "data_foreign_prod.csv"),         #Foreign producers
@@ -142,13 +143,23 @@ firm_sim_process_inputs <- function(envir) {
   
   # Update fieldnames/datatypes for consistency
   
-  # Add the MZ Employment from outside the model region to the TAZ Employment
-  envir[["TAZEmployment"]] <- rbind(envir[["TAZEmployment"]],
-                                    envir[["MZEmployment"]][!Mesozone %in% BASE_MZ_INTERNAL],
+  # Aggregate the county employment from outside the model region to CBPZones and add it to the TAZ Employment
+  envir[["CountyEmployment"]] <- envir[["CountyEmployment"]][!CountyFIPS %in% BASE_FIPS_INTERNAL]
+  envir[["CountyEmployment"]][envir$c_fips_faf[,.(CountyFIPS = FIPS, FAFZONE)],
+                              FAFZONE := i.FAFZONE, 
+                              on = "CountyFIPS"]
+  envir[["CountyEmployment"]][envir$c_cbp_faf[CBPZONE < 1000],
+                              CBPZONE := i.CBPZONE, 
+                              on = "FAFZONE"]
+  
+  envir[["TAZEmployment"]] <- rbind(envir[["TAZEmployment"]][, CBPZONE := CountyFIPS],
+                                    envir[["CountyEmployment"]][!is.na(CBPZONE), 
+                                                                .(Employment = sum(Employment)), 
+                                                                keyby = .(Mesozone = CBPZONE + 150, NAICS, CBPZONE)],
                                     fill = TRUE)
   
-  # remove the  MZ Employment data from the environment
-  rm(MZEmployment, envir = envir)
+  # remove the  County Employment data from the environment
+  rm(CountyEmployment, envir = envir)
   
   # Naming and data type of control employment data
   setnames(envir[["TAZEmployment"]], 
@@ -159,11 +170,6 @@ firm_sim_process_inputs <- function(envir) {
   
   # Add TAZ field to the external MZs (value of the maximum TAZ + Mesozone)
   envir[["TAZEmployment"]][!Mesozone %in% BASE_MZ_INTERNAL, TAZ := Mesozone + max(BASE_TAZ_INTERNAL)]
-  
-  # Add CBPZONE for matching with the establishment data (FIPS code in CMAP, Mesozone - 150 outside)
-  envir[["TAZEmployment"]][, CBPZONE := ifelse(Mesozone %in% BASE_MZ_INTERNAL,
-                                               CountyFIPS,
-                                               Mesozone - 150L)]
   
   # Create a summarized version of the CMAP model region employment data with employment grouping categories in wide format
   envir[["TAZLandUseCVTM"]] <- add_totals(dcast.data.table(merge(envir[["TAZEmployment"]][TAZ %in% BASE_TAZ_INTERNAL,

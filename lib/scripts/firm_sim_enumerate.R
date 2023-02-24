@@ -3,20 +3,20 @@
 firm_synthesis_enumerate <- function(Establishments, EstSizeCategories, TAZEmployment, mzemp){
 
   # Synthesize data for missing NAICS/county category 92
-  EmpCounty <- TAZEmployment[,.(Emp = sum(Employees.SE)), keyby = .(EmpCatName, CountyFIPS)]
+  EmpCounty <- TAZEmployment[,.(Emp = sum(Employees.SE)), keyby = .(EmpCatName, CBPZONE)]
   EmpCounty[Establishments[,.(Est = sum(est)), by = EmpCatName], Est := i.Est, on = c("EmpCatName")]
   EmpCounty[is.na(Est), Est := 0]
   EmpCountyPublic <- EmpCounty[EmpCatName == "92"]
-  EmpCountyPublic[EmpCounty[EmpCatName != "92", .(Emp = sum(Emp)), by = CountyFIPS], EmpOther := i.Emp, on = "CountyFIPS"]
+  EmpCountyPublic[EmpCounty[EmpCatName != "92", .(Emp = sum(Emp)), by = CBPZONE], EmpOther := i.Emp, on = "CBPZONE"]
   EmpCountyPublic[, PctPublic := Emp/EmpOther]
   
-  EstablishmentsMiss <- Establishments[, .(est = sum(est)), by = .(CountyFIPS, esizecat)]
-  EstablishmentsMiss[EmpCountyPublic, PctPublic := i.PctPublic, on = "CountyFIPS"]
+  EstablishmentsMiss <- Establishments[, .(est = sum(est)), by = .(CBPZONE, CMAP21, esizecat)]
+  EstablishmentsMiss[EmpCountyPublic, PctPublic := i.PctPublic, on = "CBPZONE"]
   EstablishmentsMiss[, estPublic := est * PctPublic]
   EstablishmentsMiss[, estPublic := bucketRound(estPublic)]
   
   Establishments <- rbind(Establishments,
-                          EstablishmentsMiss[, .(NAICS6 = 920000, CountyFIPS, 
+                          EstablishmentsMiss[, .(NAICS6 = 920000, CBPZONE, CMAP21,
                                                  EmpCatName = "92", esizecat, est = estPublic)])
   
   # Enumerates the agent businesses using the est variable.
@@ -43,8 +43,8 @@ firm_synthesis_enumerate <- function(Establishments, EstSizeCategories, TAZEmplo
   # Remove uncessary fields
   Firms[, est := NULL]
   
-  # Assign firms from Counties to Mesozones
-  FirmsMZ <- Firms[CountyFIPS %in% BASE_FIPS_INTERNAL, .(CountyFIPS, BusID, EmpCatName, Emp)]
+  # Assign firms from CMAP Counties to Mesozones
+  FirmsMZ <- Firms[CBPZONE %in% BASE_FIPS_INTERNAL, .(CountyFIPS = CBPZONE, BusID, EmpCatName, Emp)]
   
   # Assign specific NAICS categories which would be used to locate businesses to tazs
   FirmsMZ[EmpCatName %in% c("31","32","33"), EmpCatName := "3133"]
@@ -92,6 +92,7 @@ firm_synthesis_enumerate <- function(Establishments, EstSizeCategories, TAZEmplo
   
   # Assign MESOZONES for all firms
   Firms[FirmsMZ, Mesozone := i.Mesozone, on = "BusID"]
+  Firms[!CBPZONE %in% BASE_FIPS_INTERNAL, Mesozone := CBPZONE + 150L]
   
   # Add an initial allocation to the TAZs within each Mesozone 
   # Allocation proportional to employment by group
@@ -101,7 +102,7 @@ firm_synthesis_enumerate <- function(Establishments, EstSizeCategories, TAZEmplo
   taz_prob[is.na(Prob), Prob := 0.001]
   set.seed(BASE_SEED_VALUE)
     
-  for (mz in BASE_MZ_INTERNAL){
+  for (mz in BASE_MZ_DOMESTIC){
     for (empcat in unique(taz_prob[Mesozone == mz]$EmpCatName)){
       SampleTAZ <- taz_prob[Mesozone == mz & EmpCatName == empcat]$TAZ
       ProbTAZ <- taz_prob[Mesozone == mz & EmpCatName == empcat]$Prob
