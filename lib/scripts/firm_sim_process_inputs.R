@@ -160,6 +160,11 @@ firm_sim_process_inputs <- function(envir) {
   # Add TAZ field to the external MZs (value of the maximum TAZ + Mesozone)
   envir[["TAZEmployment"]][!Mesozone %in% BASE_MZ_INTERNAL, TAZ := Mesozone + max(BASE_TAZ_INTERNAL)]
   
+  # Add CBPZONE for matching with the establishment data (FIPS code in CMAP, Mesozone - 150 outside)
+  envir[["TAZEmployment"]][, CBPZONE := ifelse(Mesozone %in% BASE_MZ_INTERNAL,
+                                               CountyFIPS,
+                                               Mesozone - 150L)]
+  
   # Create a summarized version of the CMAP model region employment data with employment grouping categories in wide format
   envir[["TAZLandUseCVTM"]] <- add_totals(dcast.data.table(merge(envir[["TAZEmployment"]][TAZ %in% BASE_TAZ_INTERNAL,
                                                                                           .(TAZ, Mesozone, CountyFIPS, 
