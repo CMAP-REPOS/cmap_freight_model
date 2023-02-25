@@ -1,13 +1,18 @@
 # Allocating specific commodities to each establishment
-firm_synthesis_commodities <- function(Firms){
+firm_synthesis_commodities <- function(Firms, c_n6_n6io_sctg){
 
+  # Merge in the I/O NAICS codes and SCTG codes
+  FirmsDomestic[c_n6_n6io_sctg[,.(NAICS6 = Industry_NAICS6_CBP, Industry_NAICS6_Make, Commodity_SCTG)],
+                c("Industry_NAICS6_Make" , "Commodity_SCTG") := .(i.Industry_NAICS6_Make, i.Commodity_SCTG),
+                on  = "NAICS6"]
+  
   # This function identifies producers who make 2+ commodities (especially wholesalers) and
   # simulates a specific commodity for them based on probability thresholds for multiple commodities
-  set.seed(151)
+  set.seed(BASE_SEED_VALUE)
   Firms[, temprand := runif(.N)]
 
   # For all the NAICS which may produce more than one SCTG commodity, simulate one SCTG commodity using set probability thresholds
-  setkey(Firms, Industry_NAICS6_CBP)
+  setkey(Firms, NAICS6)
 
   Firms[.(211111), Commodity_SCTG := c(16L, 19L)[1 + findInterval(temprand, c(0.45))]]
   Firms[.(324110), Commodity_SCTG := c(17L, 18L, 19L)[1 + findInterval(temprand, c(0.25, 0.50))]]

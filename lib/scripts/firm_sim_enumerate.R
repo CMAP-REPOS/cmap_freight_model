@@ -39,6 +39,7 @@ firm_synthesis_enumerate <- function(Establishments, EstSizeCategories, TAZEmplo
   
   # Add an ID and firm type
   Firms[, BusID := .I]
+  Firms[, FirmType := "Domestic"]
 
   # Remove uncessary fields
   Firms[, est := NULL]
