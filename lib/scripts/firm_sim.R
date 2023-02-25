@@ -36,9 +36,6 @@ firm_sim <- function(Establishments) {
       progressUpdate(prop = 2/12, dir = SCENARIO_LOG_PATH)
       FirmsDomestic <- firm_synthesis_commodities(Firms = FirmsDomestic)
       
-      progressUpdate(prop = 3/12, dir = SCENARIO_LOG_PATH)
-      FirmsDomestic <- firm_synthesis_mesozones(Firms = FirmsDomestic)
-      
       progressUpdate(prop = 4/12, dir = SCENARIO_LOG_PATH)
       # For summaries prior to scaling
       FirmsDomesticUnscaled <- copy(FirmsDomestic)
