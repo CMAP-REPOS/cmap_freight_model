@@ -4,6 +4,7 @@ firm_sim_process_inputs <- function(envir) {
   
   ### Load project input files
   project.files <- c( c_n2_empcats         = file.path(SYSTEM_DATA_PATH, "corresp_naics2_empcats.csv"),    # Correspondence between NAICS2 groups and aggregated employment groups
+                      c_n2017_n2012        = file.path(SYSTEM_DATA_PATH, "corresp_naics2017_naics2012.csv"),# Correspondence between NAICS 6-digit categories for 2017 and 2012
                       c_n6_n6io_sctg       = file.path(SYSTEM_DATA_PATH, "corresp_naics6_n6io_sctg.csv"),  # Correspondence between NAICS 6-digit, I/O NAICS, and SCTG
                       c_cbp_faf            = file.path(SYSTEM_DATA_PATH, "corresp_fafzone_cbpzone.csv"),   # Correspondence between CBP and FAF zone systems
                       c_cbp_mz             = file.path(SYSTEM_DATA_PATH, "corresp_mesozone_cbpzone.csv"),  # Correspondence between CBP and Mesozone zone systems
@@ -23,7 +24,6 @@ firm_sim_process_inputs <- function(envir) {
                       firm_sim_enumerate         = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_enumerate.R"),
                       firm_sim_enumerate_foreign = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_enumerate_foreign.R"),
                       firm_sim_input_output      = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_input_output.R"),
-                      firm_sim_mesozones         = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_mesozones.R"),
                       firm_sim_process_inputs    = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_process_inputs.R"),
                       firm_sim_producers         = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_producers.R"),
                       firm_sim_sample_groups     = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_sample_groups.R"),

@@ -1,22 +1,35 @@
 # Allocating specific commodities to each establishment
-firm_synthesis_commodities <- function(Firms, c_n6_n6io_sctg){
+firm_synthesis_commodities <- function(Firms, c_n2017_n2012 ,c_n6_n6io_sctg){
 
   # Merge in the I/O NAICS codes and SCTG codes
-  FirmsDomestic[c_n6_n6io_sctg[,.(NAICS6 = Industry_NAICS6_CBP, Industry_NAICS6_Make, Commodity_SCTG)],
+  
+  # 2017 to 2012 NAICS
+  Firms[c_n2017_n2012[,.(NAICS6 = `NAICS Code 2017`, NAICS2012 = `NAICS Code 2012`)],
+                NAICS2012 := i.NAICS2012, on = "NAICS6"]
+  Firms[NAICS6 == 920000, NAICS2012 := 920000]
+  
+  # 2012 to 2007 NAICS
+  Firms[NAICS2012_to_NAICS2007,
+        NAICS2007 := i.NAICS2007, on = "NAICS2012"]
+  Firms[NAICS6 == 920000, NAICS2007 := 920000]
+  
+  # NAICS IO and SCTG
+  Firms[c_n6_n6io_sctg[,.(NAICS2007 = Industry_NAICS6_CBP, Industry_NAICS6_Make, Commodity_SCTG)],
                 c("Industry_NAICS6_Make" , "Commodity_SCTG") := .(i.Industry_NAICS6_Make, i.Commodity_SCTG),
-                on  = "NAICS6"]
+                on  = "NAICS2007"]
+  Firms[NAICS6 == 920000, c("Industry_NAICS6_Make" , "Commodity_SCTG") := .(920000, 0)]
   
   # This function identifies producers who make 2+ commodities (especially wholesalers) and
   # simulates a specific commodity for them based on probability thresholds for multiple commodities
+  setkey(Firms, BusID)
   set.seed(BASE_SEED_VALUE)
   Firms[, temprand := runif(.N)]
 
   # For all the NAICS which may produce more than one SCTG commodity, simulate one SCTG commodity using set probability thresholds
-  setkey(Firms, NAICS6)
+  Firms[NAICS2007 == 211111, Commodity_SCTG := c(16L, 19L)[1 + findInterval(temprand, c(0.45))]]
+  Firms[NAICS2007 == 324110, Commodity_SCTG := c(17L, 18L, 19L)[1 + findInterval(temprand, c(0.25, 0.50))]]
 
-  Firms[.(211111), Commodity_SCTG := c(16L, 19L)[1 + findInterval(temprand, c(0.45))]]
-  Firms[.(324110), Commodity_SCTG := c(17L, 18L, 19L)[1 + findInterval(temprand, c(0.25, 0.50))]]
-
+  Firms[, n4 := as.character(floor(NAICS6/100))]
   setkey(Firms, n4)
 
   Firms["4245", Commodity_SCTG := c(1L, 2L, 3L, 4L)[1 + findInterval(temprand, c(0.25, 0.50, 0.75))]] #Farm Product Raw Material Merchant Wholesalers
@@ -39,10 +52,11 @@ firm_synthesis_commodities <- function(Firms, c_n6_n6io_sctg){
   Firms["4239", Commodity_SCTG := 40L] #Miscellaneous Durable Goods Merchant Wholesalers
   Firms["4249", Commodity_SCTG := 40L] #Miscellaneous Nondurable Goods Merchant Wholesalers
 
-  Firms[n2=="42", Industry_NAICS6_Make := paste0(n4, "00")]
+  Firms[, n2 := as.character(floor(NAICS6/10000))]
+  Firms[n2 == "42", Industry_NAICS6_Make := paste0(n4, "00")]
 
   # Remove uncessary fields
-  Firms[,c("Industry_NAICS6_CBP", "n4", "temprand") := NULL]
+  Firms[, c("NAICS2012", "NAICS2007", "n4", "n2", "temprand") := NULL]
 
   # Return the processed Firms table
   return(Firms)
