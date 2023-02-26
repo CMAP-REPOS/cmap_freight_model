@@ -137,11 +137,10 @@ TAZ_System <- rbind(TAZ_System,
                     country_zones,
                     fill = TRUE)
 
-# Mesozone for rest of USA is CBPZONE + 150
+# Mesozone for rest of world is CBPZONE + 150
 TAZ_System[is.na(Mesozone), Mesozone := CBPZONE + 150L]
 
-# TAZ for the rest of USA is max taz + CBPZONE
-max_taz <- max(TAZ_System[!is.na(TAZ)]$TAZ)
+# TAZ for the rest of world is max internal taz + CBPZONE
 TAZ_System[is.na(TAZ), TAZ := max_taz + CBPZONE]
 
 # Add labels

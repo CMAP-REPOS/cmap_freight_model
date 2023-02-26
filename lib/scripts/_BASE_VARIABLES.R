@@ -2,22 +2,26 @@
 
 # CMAP region
 TAZ_System <- read.csv(file.path(SYSTEM_DATA_PATH, "TAZ_System.csv"))
-BASE_TAZ_INTERNAL <- TAZ_System$TAZ #range of TAZs that covers the complete CMAP model region 
-BASE_MZ_INTERNAL <- sort(unique(TAZ_System$Mesozone)) #range of mesozones that covers the complete CMAP model region 
-BASE_FIPS_INTERNAL <- sort(unique(TAZ_System$CountyFIPS)) #range of county fips code that covers the complete CMAP model region 
+BASE_TAZ_INTERNAL <- TAZ_System$TAZ[TAZ_System$TAZ_TYPE == "MODELREGION"] #range of TAZs that covers the complete CMAP model region 
+BASE_MZ_INTERNAL <- sort(unique(TAZ_System$Mesozone[TAZ_System$TAZ_TYPE == "MODELREGION"])) #range of mesozones that covers the complete CMAP model region 
+BASE_FIPS_INTERNAL <- sort(unique(TAZ_System$CountyFIPS[TAZ_System$TAZ_TYPE == "MODELREGION"])) #range of county fips code that covers the complete CMAP model region 
 BASE_TAZ_CHICAGO <- TAZ_System$TAZ[TAZ_System$chicago == 1] #range of TAZ is City of Chicago
 BASE_TAZ_COOK <- TAZ_System$TAZ[TAZ_System$CountyFIPS == 17031] #range of TAZ is Cook County
 BASE_TAZ_CMAP <- TAZ_System$TAZ[TAZ_System$cmap == 1] #range of TAZ is CMAP MPO region
-rm(TAZ_System)
 
 # National and international zone ranges
-BASE_MZ_DOMESTIC <- 1L:273L #range of Mesozones that covers the USA
+BASE_TAZ_DOMESTIC <- sort(unique(TAZ_System$TAZ[TAZ_System$TAZ_TYPE %in% c("MODELREGION", "NATIONAL")])) #range of TAZ that covers the USA
+BASE_TAZ_NATIONAL <- BASE_TAZ_DOMESTIC[!BASE_TAZ_DOMESTIC %in% BASE_TAZ_INTERNAL] #range of TAZ that covers the USA outside the CMAP model region
+BASE_TAZ_INTERNATIONAL <- sort(unique(TAZ_System$TAZ[TAZ_System$TAZ_TYPE == "INTERNATIONAL"])) #range of TAZ covering foreign countries
+BASE_MZ_DOMESTIC <- sort(unique(TAZ_System$Mesozone[TAZ_System$TAZ_TYPE %in% c("MODELREGION", "NATIONAL")])) #range of Mesozones that covers the USA
 BASE_MZ_NATIONAL <- BASE_MZ_DOMESTIC[!BASE_MZ_DOMESTIC %in% BASE_MZ_INTERNAL] #range of Mesozones that covers the USA outside the CMAP model region
-BASE_MZ_INTERNATIONAL <- 274L:1000L #range of Mesozones covering foreign countries
+BASE_MZ_INTERNATIONAL <- sort(unique(TAZ_System$Mesozone[TAZ_System$TAZ_TYPE == "INTERNATIONAL"])) #range of Mesozones covering foreign countries
+
+rm(TAZ_System)
 
 # Define application time periods, run years, and other temporal inputs
 BASE_SCENARIO_BASE_NAME <- "base" #base year scenario name
-BASE_SCENARIO_BASE_YEAR <- 2015 #base year scenario year
+BASE_SCENARIO_BASE_YEAR <- 2019 #base year scenario year
 
 # Define other application parameters
 BASE_NEW_FIRMS_PROP <- 0.3 #proportion of growth in employment in already developed TAZs that comes from new firm formation as opposed to existing firm growth
