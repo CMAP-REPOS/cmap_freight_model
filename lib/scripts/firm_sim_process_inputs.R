@@ -141,8 +141,6 @@ firm_sim_process_inputs <- function(envir) {
   
   ### Process scenario input files
   
-  # Update fieldnames/datatypes for consistency
-  
   # Aggregate the county employment from outside the model region to CBPZones and add it to the TAZ Employment
   envir[["CountyEmployment"]] <- envir[["CountyEmployment"]][!CountyFIPS %in% BASE_FIPS_INTERNAL]
   envir[["CountyEmployment"]][envir$c_fips_faf[,.(CountyFIPS = FIPS, FAFZONE)],
@@ -158,18 +156,27 @@ firm_sim_process_inputs <- function(envir) {
                                                                 keyby = .(Mesozone = CBPZONE + 150, NAICS, CBPZONE)],
                                     fill = TRUE)
   
-  # remove the  County Employment data from the environment
+  # Remove the County Employment data from the environment
   rm(CountyEmployment, envir = envir)
   
-  # Naming and data type of control employment data
+  # Naming of zone and employment field to match scaling function requirements
   setnames(envir[["TAZEmployment"]], 
-           c("Zone17", "NAICS", "Employment"), 
-           c("TAZ", "EmpCatName", "Employees.SE"))
+           c("Zone17", "Employment"), 
+           c("TAZ", "Employees.SE"))
   
-  envir[["TAZEmployment"]][, EmpCatName := as.character(EmpCatName)]
+  # Add employment categories
+  envir[["TAZEmployment"]][envir[["c_n2_empcats"]][,.(NAICS = NAICS2, 
+                                                      EmpCatName = as.character(EmpCatName))], 
+                           EmpCatName := as.character(i.EmpCatName), 
+                           on = "NAICS"]
   
   # Add TAZ field to the external MZs (value of the maximum TAZ + Mesozone)
   envir[["TAZEmployment"]][!Mesozone %in% BASE_MZ_INTERNAL, TAZ := Mesozone + max(BASE_TAZ_INTERNAL)]
+  
+  
+  # Summarize by TAZ and employment category
+  envir[["TAZEmployment"]] <- envir[["TAZEmployment"]][, .(Employees.SE = sum(Employees.SE)), 
+                                                       keyby = .(TAZ, Mesozone, CountyFIPS, CBPZONE, EmpCatName)]
   
   # Create a summarized version of the CMAP model region employment data with employment grouping categories in wide format
   envir[["TAZLandUseCVTM"]] <- add_totals(dcast.data.table(merge(envir[["TAZEmployment"]][TAZ %in% BASE_TAZ_INTERNAL,

@@ -29,53 +29,42 @@ firm_sim <- function(Establishments) {
                                                 TAZEmployment = TAZEmployment,
                                                 mzemp = mzemp)
       
+      # Allocated SCTG commodities to firms
       progressUpdate(prop = 2/12, dir = SCENARIO_LOG_PATH)
       FirmsDomestic <- firm_synthesis_commodities(Firms = FirmsDomestic,
                                                   c_n2017_n2012 = c_n2017_n2012,
                                                   c_n6_n6io_sctg = c_n6_n6io_sctg)
       
-      progressUpdate(prop = 4/12, dir = SCENARIO_LOG_PATH)
-      # For summaries prior to scaling
-      FirmsDomesticUnscaled <- copy(FirmsDomestic)
-      
       # Scale the emplyoment
-      FirmsDomestic <- firm_synthesis_scaling(Firms = FirmsDomestic,
-                                              emp_control = emp_control,
-                                              emp_control_taz = emp_control_taz,
-                                              c_cbp_faf = c_cbp_faf,
-                                              c_cbp_mz = c_cbp_mz,
-                                              c_taz_mz = c_taz_mz,
-                                              EmpBounds = EmpBounds)
+      progressUpdate(prop = 3/12, dir = SCENARIO_LOG_PATH)
+      FirmsDomestic <- scaleEstablishmentsTAZEmployment(RegionFirms = FirmsDomestic, 
+                                                        TAZEmployment = TAZEmployment, 
+                                                        NewFirmsProportion = 0,
+                                                        MaxBusID = max(FirmsDomestic$BusID),
+                                                        EstSizeCategories = EstSizeCategories,
+                                                        TAZEmploymentShape = "LONG")
       
-      # save complete firms  list after scaling
-      save(FirmsDomestic, file = file.path(SCENARIO_OUTPUT_PATH, "BaseYearDomesticFirms.Rdata"))
-     
     } else {
       
       # Future year/alternative scenario
-      
-      if(file.exists(file.path(SCENARIO_BASE_OUTPUT_PATH, "BaseYearDomesticFirms.Rdata"))){
+      if(file.exists(SCENARIO_BASEFIRMS)){
+        
+        cat("Updating Base Year Establishment List with Future Control Data", "\n")
         
         # Load the output from the base year firm synthesis model
-        cat("Loading Base Year Establishment List", "\n")
+        progressUpdate(prop = 3/12, dir = SCENARIO_LOG_PATH)
         
-        load(file.path(SCENARIO_BASE_OUTPUT_PATH, "BaseYearDomesticFirms.Rdata"))
-        
-        progressUpdate(prop = 4/12, dir = SCENARIO_LOG_PATH)
-        # For summaries prior to scaling
-        FirmsDomesticUnscaled <- copy(FirmsDomestic)
+        load(SCENARIO_BASEFIRMS)
+        FirmsDomestic <- firm_sim_results$FirmsDomestic
+        rm(firm_sim_results)
         
         # Scale the emplyoment
-        FirmsDomestic <- firm_synthesis_scaling(Firms = FirmsDomestic,
-                                                emp_control = emp_control,
-                                                emp_control_taz = emp_control_taz,
-                                                c_cbp_faf = c_cbp_faf,
-                                                c_cbp_mz = c_cbp_mz,
-                                                c_taz_mz = c_taz_mz,
-                                                EmpBounds = EmpBounds)
-        
-        # save complete firms  list after scaling
-        save(FirmsDomestic, file = file.path(SCENARIO_OUTPUT_PATH, "ScenarioDomesticFirms.Rdata"))
+        FirmsDomestic <- scaleEstablishmentsTAZEmployment(RegionFirms = FirmsDomestic, 
+                                                          TAZEmployment = TAZEmployment, 
+                                                          NewFirmsProportion = BASE_NEW_FIRMS_PROP,
+                                                          MaxBusID = max(FirmsDomestic$BusID),
+                                                          EstSizeCategories = EstSizeCategories,
+                                                          TAZEmploymentShape = "LONG")
         
       } else {
         
@@ -84,16 +73,17 @@ firm_sim <- function(Establishments) {
       }
     }
     
-    cat("Saving Regional Establishment List", "\n")
+    # Add employment classifications and spatial fields
+    progressUpdate(prop = 4/12, dir = SCENARIO_LOG_PATH)
+    cat("Adding Employment Group and Spatial Variables", "\n")
     
-    # save regional CBP list for analysis
-    RegionFirms <- FirmsDomestic[MESOZONE < 150]
-    save(RegionFirms, file = file.path(SCENARIO_OUTPUT_PATH, "RegionFirms.Rdata"))
+    FirmsDomestic[UEmpCats, 
+                  EmpCatGroupedName := i.EmpCatGroupedName,
+                  on = "EmpCatName"]
     
-    # save warehouse list for use in truck touring model
-    # NAICS 481 air, 482 rail, 483 water, 493 warehouse and storage
-    warehouses <- RegionFirms[substr(Industry_NAICS6_Make, 1, 3) %in% c(481, 482, 483, 493)]
-    save(warehouses, file = file.path(SCENARIO_OUTPUT_PATH, "warehouses.Rdata"))
+    FirmsDomestic[TAZ_System, 
+                  c("Mesozone", "CountyFIPS") := .(i.Mesozone, i.CountyFIPS), 
+                  on = "TAZ"]
     
     cat("Creating Foreign Establishment List", "\n")
     
@@ -107,7 +97,6 @@ firm_sim <- function(Establishments) {
     SCTGCheck <- merge(FirmsDomestic[, .(FirmsDomestic = .N), by = Commodity_SCTG][order(Commodity_SCTG)],
                        FirmsForeign[, .(FirmsForeign = .N), by = Commodity_SCTG][order(Commodity_SCTG)],
                        by = "Commodity_SCTG")
-    fwrite(SCTGCheck, file = file.path(SCENARIO_OUTPUT_PATH, "SCTGCheck.csv"))
     
     cat("Processing Input Output Table", "\n")
     
@@ -160,10 +149,7 @@ firm_sim <- function(Establishments) {
     
     progressUpdate(prop = 11/12, dir = SCENARIO_LOG_PATH)
     producers_consumers_list <- firm_synthesis_write_groups(producers = producers,
-                                                            consumers = consumers,
-                                                            naics_set = naics_set,
-                                                            ScenarioFirms = ScenarioFirms, 
-                                                            TAZLandUseCVTM = TAZLandUseCVTM)
+                                                            consumers = consumers)
     
   } # end run step 2
   
@@ -174,7 +160,12 @@ firm_sim <- function(Establishments) {
   if(USER_RUN_MODE == "Calibration"){
     return(get(submodel_results_name))
   } else {
-    return(producers_consumers_list)
+    return(firm_sim_results = c(producers_consumers_list,
+                                list(naics_set = naics_set,
+                                     Establishments = Establishments,
+                                     FirmsDomestic = FirmsDomestic, 
+                                     TAZLandUseCVTM = TAZLandUseCVTM,
+                                     SCTGCheck = SCTGCheck)))
   }
   
 }
