@@ -24,16 +24,22 @@ county <- st_read(file.path(SYSTEM_DEV_DATA_PATH,
                             "tl_2015_us_county.shp"))
 st_crs(county)
 
+# QCEW county list
+qcew_county <- fread(file.path(SYSTEM_DEV_DATA_PATH, "QCEW", "qcew_county.csv"))
+
 # FAF3 to county correspondence and other existing correspondence files
 c_county_faf3 <- fread(file.path(SYSTEM_DEV_DATA_PATH, "ZoneCorresp", "corresp_countyfips_faf.csv"))
 c_faf_cbp <- fread(file.path(SYSTEM_DEV_DATA_PATH, "ZoneCorresp", "corresp_fafzone_cbpzone.csv"))
 c_mz_faf <- fread(file.path(SYSTEM_DEV_DATA_PATH, "ZoneCorresp", "corresp_meso_faf3_region.csv"))
 c_mz_cbp <- fread(file.path(SYSTEM_DEV_DATA_PATH, "ZoneCorresp", "corresp_mesozone_cbpzone.csv"))
 
-# CBP data for 2017
-cbp <- fread(file.path(SYSTEM_DATA_PATH, "data_emp_cbp.csv"))
-unique(cbp$FAFZONE)
+# foreign prod/cons data
+for_prod <- fread("./scenarios/base/inputs/data_foreign_prod.csv")
+for_cons <- fread("./scenarios/base/inputs/data_foreign_cons.csv")
+
 ### CREATE COMPLETE CORRESPONDENCE ==============
+
+# CMAP Model Region
 
 c_taz_mz <- unique(emp_control[,.(TAZ = Zone17, Mesozone)])
 
@@ -70,29 +76,104 @@ TAZ_System[, DistrictNum := ifelse(county_state == "DEKALB, IL" & cmap == 1,10,D
 TAZ_System[, DistrictNum := ifelse(cmap == 0,11,DistrictNum)]
 TAZ_System[DistrictNum == 0]
 
+# Rest of US and Global
+
 # Create the national and global zones outside the CMAP zones
 # smallest unit is county for national zones
 # add aggregate zones (TAZ, Mesozone, CBPZONE for matching with establishment data, FAF zone)
 
 county_dt <- as.data.table(county)
-county_dt <- unique(county_dt[,.(STATEFP, 
+county_dt <- unique(county_dt[,.(StateFIPS = as.integer(STATEFP), 
                           CountyFIPS = as.integer(STATEFP) * 1000 + as.integer(COUNTYFP),
                           county = toupper(NAME))])
 
+# Just keep the FIPS codes that are in the QCEW control data (but not US territories)
+county_dt <- county_dt[CountyFIPS %in% qcew_county[CountyFIPS < 56999]$CountyFIPS][order(CountyFIPS)]
 
+# Label the states
+county_dt[FIPS.current, state := StateAbbr, on = "StateFIPS"]
+county_dt[, StateFIPS := NULL]
 
-# add labels
+# Create additional fields to match the TAZ_System files
+county_dt[, county_state := paste(county, state, sep = ", ")]
+county_dt[, c("cbd", "chicago", "cmap") := 0L]
+county_dt[, DistrictNum := 12]
+
+# Combine (remove the CMAP region records from county_dt)
+TAZ_System <- rbind(TAZ_System,
+                    county_dt[!CountyFIPS %in% TAZ_System$CountyFIPS],
+                    fill = TRUE)
+TAZ_System[, CountyFIPS := as.integer(CountyFIPS)]
+
+# Update the spatial fields
+TAZ_System[c_county_faf3[,.(FAFZONE, FAFNAME, CountyFIPS = as.integer(FIPS))], 
+           c("FAFZONE","FAFNAME") := .(i.FAFZONE, i.FAFNAME),
+           on = "CountyFIPS"]
+
+# CBPZONE is an ID by FAFZONE and then the CountyFIPS in the CMAP region
+TAZ_System[c_faf_cbp[CBPZONE <= 123],
+           CBPZONE := i.CBPZONE, on = "FAFZONE"]
+TAZ_System[!is.na(TAZ), CBPZONE := CountyFIPS]
+
+# Mesozone for rest of USA is CBPZONE + 150
+TAZ_System[is.na(Mesozone), Mesozone := CBPZONE + 150L]
+
+# TAZ for the rest of USA is max taz + CBPZONE
+max_taz <- max(TAZ_System[!is.na(TAZ)]$TAZ)
+TAZ_System[is.na(TAZ), TAZ := max_taz + CBPZONE]
+
+# Add rows for the international FAF zones/countries
+country_zones <- unique(rbind(for_prod[,.(Country,FAFZONE, ctrycod, CBPZONE)],
+                              for_cons[,.(Country,FAFZONE, ctrycod, CBPZONE)]))
+# remove unidentified countries zone
+country_zones <- country_zones[!is.na(FAFZONE)][order(CBPZONE)]
+
+# Create additional fields to match the TAZ_System files
+country_zones[, c("cbd", "chicago", "cmap") := 0L]
+country_zones[, DistrictNum := 13]
+
+# Combine 
+TAZ_System[, Country := "United States of America"]
+TAZ_System[, ctrycod := 0L]
+TAZ_System <- rbind(TAZ_System,
+                    country_zones,
+                    fill = TRUE)
+
+# Mesozone for rest of USA is CBPZONE + 150
+TAZ_System[is.na(Mesozone), Mesozone := CBPZONE + 150L]
+
+# TAZ for the rest of USA is max taz + CBPZONE
+max_taz <- max(TAZ_System[!is.na(TAZ)]$TAZ)
+TAZ_System[is.na(TAZ), TAZ := max_taz + CBPZONE]
+
+# Add labels
 district_labels = c("Chicago","COOK, IL (Outside Chicago)","DUPAGE, IL","KANE, IL",
                     "KENDALL, IL","LAKE, IL","MCHENRY, IL","WILL, IL",
                     "GRUNDY, IL (CMAP Part)","DEKALB, IL (CMAP Part)",
-                    "Non-CMAP Part of Model Region")
+                    "Non-CMAP Part of Model Region", "Rest of USA", "International")
 TAZ_System[, DistrictName := district_labels[DistrictNum]]
 TAZ_System[, DistrictName := factor(DistrictName, levels = district_labels)]
+
+TAZ_System[c_mz_faf[,.(Mesozone = MESOZONE, REGION, SUBREGION)],
+           c("REGION", "SUBREGION") := .(i.REGION, i.SUBREGION),
+           on = "Mesozone"]
+
+faf_global_labels = data.table(FAFZONE = 801:808,
+                               FAFNAME = c("Canada", "Mexico", "Americas",
+                                           "Europe", "Africa", "SWC Asia", 
+                                          "E Asia", "SE As Oc"))
+
+TAZ_System[faf_global_labels, FAFNAME := i.FAFNAME, on = "FAFZONE"]
+
+# Add a couple more grouping variables
+TAZ_System[, modelregion := ifelse(Mesozone < 150, 1L, 0L)]
+TAZ_System[, TAZ_TYPE := ifelse(Mesozone < 150, "MODELREGION", 
+                                ifelse(DistrictNum < 13, "NATIONAL", "INTERNATIONAL"))]
 
 ### CREATE SHAPE FILE VERSION ===================================
 
 TAZ_System_Shape <- st_transform(zone17, crs = st_crs(county))
-TAZ_System_Shape$TAZ <- TAZ_System$TAZ
+TAZ_System_Shape$TAZ <- TAZ_System$zone17
 
 ### SAVE FINAL CORRESPONDENCE ===================================
 
@@ -100,34 +181,3 @@ TAZ_System_Shape$TAZ <- TAZ_System$TAZ
 fwrite(TAZ_System, file.path("lib", 
                                 "data", 
                                 "TAZ_System.csv"))
-
-# write the shapefile version 
-st_write(TAZ_System_Shape, 
-         dsn = file.path("lib", 
-                         "data", 
-                         "TAZ_System_Shape.shp"), 
-         delete_layer = TRUE)
-
-# Create a simplified shape file for quicker mapping
-TAZ_System_Shape <- st_read(file.path("lib", "data", "TAZ_System_Shape.shp"))
-plot(TAZ_System_Shape[,c("county_nam")])
-plot(st_simplify(TAZ_System_Shape[,c("county_nam")]
-                 , dTolerance = 100))
-
-TAZ_System_Shape_Small <- st_simplify(TAZ_System_Shape,
-                                      preserveTopology = TRUE,
-                                      dTolerance = 30)
-st_write(TAZ_System_Shape_Small, 
-         dsn = file.path(SYSTEM_DEV_DATA_PATH,
-                         "TAZ", 
-                         "TAZ_System_Shape_Small.shp"), 
-         delete_layer = TRUE)
-
-# overwrite the model version with the small one
-st_write(TAZ_System_Shape_Small, 
-         dsn = file.path("lib", 
-                         "data", 
-                         "TAZ_System_Shape.shp"), 
-         delete_layer = TRUE)
-
-plot(TAZ_System_Shape_Small[,c("DistrictNa")])
