@@ -7,8 +7,6 @@
 # Outputs:
 # Model inputs in lib\data:
 # TAZ_System.csv
-# TAZ_System_Shape.shp
-# TAZ_System_Shape_Small.shp
 #
 # use init_dev.R to run here instead of sourcing from _Master_Dev.R
 source("./dev/init_dev.R")
@@ -169,11 +167,6 @@ TAZ_System[faf_global_labels, FAFNAME := i.FAFNAME, on = "FAFZONE"]
 TAZ_System[, modelregion := ifelse(Mesozone < 150, 1L, 0L)]
 TAZ_System[, TAZ_TYPE := ifelse(Mesozone < 150, "MODELREGION", 
                                 ifelse(DistrictNum < 13, "NATIONAL", "INTERNATIONAL"))]
-
-### CREATE SHAPE FILE VERSION ===================================
-
-TAZ_System_Shape <- st_transform(zone17, crs = st_crs(county))
-TAZ_System_Shape$TAZ <- TAZ_System$zone17
 
 ### SAVE FINAL CORRESPONDENCE ===================================
 
