@@ -6,10 +6,6 @@ firm_sim_process_inputs <- function(envir) {
   project.files <- c( c_n2_empcats         = file.path(SYSTEM_DATA_PATH, "corresp_naics2_empcats.csv"),    # Correspondence between NAICS2 groups and aggregated employment groups
                       c_n2017_n2012        = file.path(SYSTEM_DATA_PATH, "corresp_naics2017_naics2012.csv"),# Correspondence between NAICS 6-digit categories for 2017 and 2012
                       c_n6_n6io_sctg       = file.path(SYSTEM_DATA_PATH, "corresp_naics6_n6io_sctg.csv"),  # Correspondence between NAICS 6-digit, I/O NAICS, and SCTG
-                      c_cbp_faf            = file.path(SYSTEM_DATA_PATH, "corresp_fafzone_cbpzone.csv"),   # Correspondence between CBP and FAF zone systems
-                      c_cbp_mz             = file.path(SYSTEM_DATA_PATH, "corresp_mesozone_cbpzone.csv"),  # Correspondence between CBP and Mesozone zone systems
-                      c_fips_faf           = file.path(SYSTEM_DATA_PATH, "corresp_countyfips_faf.csv"),    # Correspondence between Counties and FAF zones
-                      c_mz_faf_reg         = file.path(SYSTEM_DATA_PATH, "corresp_meso_faf3_region.csv"),  # Correspondence between Mesozones, FAF3, and census regions for summaries
                       c_n6_labels          = file.path(SYSTEM_DATA_PATH, "corresp_naics2007_labels.csv"),  # Correspondence NAICS 2007 at different levels of detail and industry name labels
                       cbp                  = file.path(SYSTEM_DATA_PATH, "data_emp_cbp.csv"),              # CBP data file
                       cbp_ag               = file.path(SYSTEM_DATA_PATH, "data_emp_cbp_ag.csv"),           # CBP data file -- Agriculture records generated seperately
@@ -43,17 +39,14 @@ firm_sim_process_inputs <- function(envir) {
     cbp <- rbind(envir[["cbp"]][Industry_NAICS6_CBP >= 113110],
                  envir[["cbp_ag"]])
     
-    # Identify the region data for the 21 county CMAP region
-    # For the 21 counties, CBPZONE == county FIPS code
     # Remove records with missing zones and NAICS codes
-    cbp[, CMAP21 := ifelse(CBPZONE %in% BASE_FIPS_INTERNAL,1,0)]
     cbp <- cbp[!is.na(FAFZONE) & !is.na(Industry_NAICS6_CBP)]
     
     # Aggregate by zones, NAICS, and firm size category (should already conform to this grouping)
     cbp <- cbp[,.(establishment = sum(establishment),
                   e1 = sum(e1), e2 = sum(e2), e3 = sum(e3), e4 = sum(e4),
                   e5 = sum(e5), e6 = sum(e6), e7 = sum(e7), e8 = sum(e8)),
-               by = .(NAICS6 = Industry_NAICS6_CBP, CBPZONE, CMAP21)]
+               by = .(NAICS6 = Industry_NAICS6_CBP, CBPZONE)]
     
     # Add 2 digit NAICS and the EmpCatName used in the model
     cbp[, NAICS2 := substr(NAICS6, 1, 2)]
@@ -80,7 +73,7 @@ firm_sim_process_inputs <- function(envir) {
     cbp_extra <- list()
     for(n2 in unique(cbpn2$NAICS2)){
       cbp_extra_n2 <- cbp[NAICS2 == n2 & est_cat_miss > 0,
-                          .(NAICS6, CBPZONE, CMAP21, establishment, est_cat_sum, est_cat_miss, NAICS2, EmpCatName)]
+                          .(NAICS6, CBPZONE, establishment, est_cat_sum, est_cat_miss, NAICS2, EmpCatName)]
       if(nrow(cbp_extra_n2)>0){
         cbp_extra_n2[, ID := .I]
         cbpn2i = cbpn2[NAICS2 == n2]
@@ -94,7 +87,7 @@ firm_sim_process_inputs <- function(envir) {
         cbp_extra_n2_samp <- rbindlist(cbp_extra_n2_samp, idcol = "ID")
         cbp_extra_n2_samp[, esizecat := paste0("e",samp)]
         setnames(cbp_extra_n2_samp, "N", "est")
-        cbp_extra_n2 <- merge(cbp_extra_n2[, .(NAICS6, CBPZONE, CMAP21, EmpCatName, ID)],
+        cbp_extra_n2 <- merge(cbp_extra_n2[, .(NAICS6, CBPZONE, EmpCatName, ID)],
                               cbp_extra_n2_samp[,.(ID, est, esizecat)],
                               by = "ID", allow.cartesian = TRUE)
       }
@@ -115,7 +108,7 @@ firm_sim_process_inputs <- function(envir) {
     
     # Combine with cbp extra and summarize
     cbp <- rbind(cbp, cbp_extra)
-    cbp <- cbp[, .(est = sum(est)), keyby = .(NAICS6, CBPZONE, CMAP21, EmpCatName, esizecat)]
+    cbp <- cbp[, .(est = sum(est)), keyby = .(NAICS6, CBPZONE, EmpCatName, esizecat)]
     
     # Convert esizecat to an integer (1:8)
     cbp[, esizecat := as.integer(esizecat)]
@@ -142,27 +135,21 @@ firm_sim_process_inputs <- function(envir) {
   ### Process scenario input files
   
   # Aggregate the county employment from outside the model region to CBPZones and add it to the TAZ Employment
-  envir[["CountyEmployment"]] <- envir[["CountyEmployment"]][!CountyFIPS %in% BASE_FIPS_INTERNAL]
-  envir[["CountyEmployment"]][envir$c_fips_faf[,.(CountyFIPS = FIPS, FAFZONE)],
-                              FAFZONE := i.FAFZONE, 
+  envir[["CountyEmployment"]] <- envir[["CountyEmployment"]][CountyFIPS %in% envir$TAZ_System$CountyFIPS & !CountyFIPS %in% BASE_FIPS_INTERNAL]
+  envir[["CountyEmployment"]][envir$TAZ_System,
+                              c("CBPZONE", "Mesozone", "TAZ") := .(i.CBPZONE, i.Mesozone, i.TAZ), 
                               on = "CountyFIPS"]
-  envir[["CountyEmployment"]][envir$c_cbp_faf[CBPZONE < 1000],
-                              CBPZONE := i.CBPZONE, 
-                              on = "FAFZONE"]
+  envir[["CountyEmployment"]] <- envir[["CountyEmployment"]][,.(Employees.SE = sum(Employment)), 
+                              keyby = .(TAZ, Mesozone, CBPZONE, NAICS)]
   
-  envir[["TAZEmployment"]] <- rbind(envir[["TAZEmployment"]][, CBPZONE := CountyFIPS],
-                                    envir[["CountyEmployment"]][!is.na(CBPZONE), 
-                                                                .(Employment = sum(Employment)), 
-                                                                keyby = .(Mesozone = CBPZONE + 150, NAICS, CBPZONE)],
-                                    fill = TRUE)
-  
-  # Remove the County Employment data from the environment
-  rm(CountyEmployment, envir = envir)
-  
-  # Naming of zone and employment field to match scaling function requirements
   setnames(envir[["TAZEmployment"]], 
-           c("Zone17", "Employment"), 
-           c("TAZ", "Employees.SE"))
+           c("Zone17", "CountyFIPS", "Employment"), 
+           c("TAZ", "CBPZONE", "Employees.SE"))
+  
+  envir[["TAZEmployment"]] <- rbind(envir[["TAZEmployment"]],
+                                    envir[["CountyEmployment"]])
+  
+  rm(CountyEmployment, envir = envir)
   
   # Add employment categories
   envir[["TAZEmployment"]][envir[["c_n2_empcats"]][,.(NAICS = NAICS2, 
@@ -170,17 +157,13 @@ firm_sim_process_inputs <- function(envir) {
                            EmpCatName := as.character(i.EmpCatName), 
                            on = "NAICS"]
   
-  # Add TAZ field to the external MZs (value of the maximum TAZ + Mesozone)
-  envir[["TAZEmployment"]][!Mesozone %in% BASE_MZ_INTERNAL, TAZ := Mesozone + max(BASE_TAZ_INTERNAL)]
-  
-  
   # Summarize by TAZ and employment category
   envir[["TAZEmployment"]] <- envir[["TAZEmployment"]][, .(Employees.SE = sum(Employees.SE)), 
-                                                       keyby = .(TAZ, Mesozone, CountyFIPS, CBPZONE, EmpCatName)]
+                                                       keyby = .(TAZ, Mesozone, CBPZONE, EmpCatName)]
   
   # Create a summarized version of the CMAP model region employment data with employment grouping categories in wide format
   envir[["TAZLandUseCVTM"]] <- add_totals(dcast.data.table(merge(envir[["TAZEmployment"]][TAZ %in% BASE_TAZ_INTERNAL,
-                                                                                          .(TAZ, Mesozone, CountyFIPS, 
+                                                                                          .(TAZ, Mesozone, CountyFIPS = CBPZONE, 
                                                                                               EmpCatName, Employees.SE)],
                                                                  envir[["UEmpCats"]],
                                                                  by = "EmpCatName"),
