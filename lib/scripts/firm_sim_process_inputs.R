@@ -4,9 +4,7 @@ firm_sim_process_inputs <- function(envir) {
   
   ### Load project input files
   project.files <- c( c_n2_empcats         = file.path(SYSTEM_DATA_PATH, "corresp_naics2_empcats.csv"),    # Correspondence between NAICS2 groups and aggregated employment groups
-                      c_n2017_n2012        = file.path(SYSTEM_DATA_PATH, "corresp_naics2017_naics2012.csv"),# Correspondence between NAICS 6-digit categories for 2017 and 2012
                       c_n6_n6io_sctg       = file.path(SYSTEM_DATA_PATH, "corresp_naics6_n6io_sctg.csv"),  # Correspondence between NAICS 6-digit, I/O NAICS, and SCTG
-                      c_n6_labels          = file.path(SYSTEM_DATA_PATH, "corresp_naics2007_labels.csv"),  # Correspondence NAICS 2007 at different levels of detail and industry name labels
                       cbp                  = file.path(SYSTEM_DATA_PATH, "data_emp_cbp.csv"),              # CBP data file
                       cbp_ag               = file.path(SYSTEM_DATA_PATH, "data_emp_cbp_ag.csv"),           # CBP data file -- Agriculture records generated seperately
                       EstSizeCategories    = file.path(SYSTEM_DATA_PATH, "data_est_size_categories.csv"),  # Establishment size categories and labels
