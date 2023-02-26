@@ -73,9 +73,10 @@ firm_sim <- function(Establishments) {
       }
     }
     
+    cat("Adding Employment Group and Spatial Variables", "\n")
+    
     # Add employment classifications and spatial fields
     progressUpdate(prop = 4/12, dir = SCENARIO_LOG_PATH)
-    cat("Adding Employment Group and Spatial Variables", "\n")
     
     FirmsDomestic[UEmpCats, 
                   EmpCatGroupedName := i.EmpCatGroupedName,
