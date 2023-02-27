@@ -1,10 +1,10 @@
 # Allocating specific commodities to each establishment
-firm_synthesis_commodities <- function(Firms, c_n2017_n2012 ,c_n6_n6io_sctg){
+firm_synthesis_commodities <- function(Firms, c_n6_n6io_sctg){
 
   # Merge in the I/O NAICS codes and SCTG codes
   
   # 2017 to 2012 NAICS
-  Firms[c_n2017_n2012[,.(NAICS6 = `NAICS Code 2017`, NAICS2012 = `NAICS Code 2012`)],
+  Firms[NAICS2017_to_NAICS2012[,.(NAICS6 = NAICS2017, NAICS2012)],
                 NAICS2012 := i.NAICS2012, on = "NAICS6"]
   Firms[NAICS6 == 920000, NAICS2012 := 920000]
   
@@ -13,7 +13,7 @@ firm_synthesis_commodities <- function(Firms, c_n2017_n2012 ,c_n6_n6io_sctg){
         NAICS2007 := i.NAICS2007, on = "NAICS2012"]
   Firms[NAICS6 == 920000, NAICS2007 := 920000]
   
-  # NAICS IO and SCTG
+  # 2007 NAICS to NAICSio and SCTG
   Firms[c_n6_n6io_sctg[,.(NAICS2007 = Industry_NAICS6_CBP, Industry_NAICS6_Make, Commodity_SCTG)],
                 c("Industry_NAICS6_Make" , "Commodity_SCTG") := .(i.Industry_NAICS6_Make, i.Commodity_SCTG),
                 on  = "NAICS2007"]

@@ -32,7 +32,6 @@ firm_sim <- function(Establishments) {
       # Allocated SCTG commodities to firms
       progressUpdate(prop = 2/12, dir = SCENARIO_LOG_PATH)
       FirmsDomestic <- firm_synthesis_commodities(Firms = FirmsDomestic,
-                                                  c_n2017_n2012 = c_n2017_n2012,
                                                   c_n6_n6io_sctg = c_n6_n6io_sctg)
       
       # Scale the emplyoment
