@@ -57,6 +57,7 @@ firm_synthesis_commodities <- function(Firms, c_n6_n6io_sctg){
 
   # Remove uncessary fields
   Firms[, c("NAICS2012", "NAICS2007", "n4", "n2", "temprand") := NULL]
+  setkey(Firms, BusID)
 
   # Return the processed Firms table
   return(Firms)

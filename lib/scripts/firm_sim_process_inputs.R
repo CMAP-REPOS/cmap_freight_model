@@ -40,11 +40,14 @@ firm_sim_process_inputs <- function(envir) {
     # Remove records with missing zones and NAICS codes
     cbp <- cbp[!is.na(FAFZONE) & !is.na(Industry_NAICS6_CBP)]
     
+    # Add a field to indentify firms as within the CMAP model region (1 in model region, 2 outside)
+    cbp[envir$TAZ_System, modelregion := i.modelregion, on = "CBPZONE" ]
+    
     # Aggregate by zones, NAICS, and firm size category (should already conform to this grouping)
     cbp <- cbp[,.(establishment = sum(establishment),
                   e1 = sum(e1), e2 = sum(e2), e3 = sum(e3), e4 = sum(e4),
                   e5 = sum(e5), e6 = sum(e6), e7 = sum(e7), e8 = sum(e8)),
-               by = .(NAICS6 = Industry_NAICS6_CBP, CBPZONE)]
+               keyby = .(modelregion, CBPZONE, NAICS6 = Industry_NAICS6_CBP)]
     
     # Add 2 digit NAICS and the EmpCatName used in the model
     cbp[, NAICS2 := substr(NAICS6, 1, 2)]
@@ -56,44 +59,56 @@ firm_sim_process_inputs <- function(envir) {
     cbp[, est_cat_miss := establishment - est_cat_sum]
     cbp[est_cat_miss < 0, est_cat_miss := 0] # should not happen
     
-    # Summarize size distributions by NAISC2 and draw from for missing est
+    # Summarize size distributions by NAISC2 by modelregion and draw from for missing est
     cbpn2 <- cbp[,.(e1 = sum(e1), e2 = sum(e2), e3 = sum(e3), e4 = sum(e4),
                     e5 = sum(e5), e6 = sum(e6), e7 = sum(e7), e8 = sum(e8)),
-                 by = .(NAICS2)]
+                 by = .(modelregion, NAICS2)]
     
     cbpn2 <- melt.data.table(cbpn2,
                              measure.vars = paste0("e",1:8),
                              variable.name ="esizecat",
                              value.name = "est")
-    cbpn2[, pest := est/sum(est), by = NAICS2]
+    cbpn2[, pest := est/sum(est), by = .(modelregion, NAICS2)]
     cbpn2[, intest := as.integer(gsub("e","", esizecat))]
     
-    cbp_extra <- list()
-    for(n2 in unique(cbpn2$NAICS2)){
-      cbp_extra_n2 <- cbp[NAICS2 == n2 & est_cat_miss > 0,
-                          .(NAICS6, CBPZONE, establishment, est_cat_sum, est_cat_miss, NAICS2, EmpCatName)]
-      if(nrow(cbp_extra_n2)>0){
-        cbp_extra_n2[, ID := .I]
-        cbpn2i = cbpn2[NAICS2 == n2]
-        cbp_extra_n2_samp <- lapply(1:nrow(cbp_extra_n2), 
-                                    function(x) {
-                                      samp = sample(x = cbpn2i$intest,
-                                                    size = cbp_extra_n2[x]$est_cat_miss,
-                                                    replace = TRUE,
-                                                    prob = cbpn2i$pest)
-                                      tab = data.table(table(samp))})      
-        cbp_extra_n2_samp <- rbindlist(cbp_extra_n2_samp, idcol = "ID")
-        cbp_extra_n2_samp[, esizecat := paste0("e",samp)]
-        setnames(cbp_extra_n2_samp, "N", "est")
-        cbp_extra_n2 <- merge(cbp_extra_n2[, .(NAICS6, CBPZONE, EmpCatName, ID)],
-                              cbp_extra_n2_samp[,.(ID, est, esizecat)],
-                              by = "ID", allow.cartesian = TRUE)
+    # add extra establishments for in model region and outside model region
+    cbp_extra_r <- list()
+    set.seed(BASE_SEED_VALUE)
+    
+    for(regionnum in 1:2){
+    
+      cbp_extra <- list()
+      cbpn2_r <- cbpn2[modelregion == regionnum]
+      
+      for(n2 in sort(unique(cbpn2_r$NAICS2))){
+        cbp_extra_n2 <- cbp[modelregion == regionnum & NAICS2 == n2 & est_cat_miss > 0,
+                            .(NAICS6, CBPZONE, establishment, est_cat_sum, est_cat_miss, NAICS2, EmpCatName)]
+        if(nrow(cbp_extra_n2)>0){
+          cbp_extra_n2[, ID := .I]
+          cbpn2i = cbpn2_r[NAICS2 == n2]
+          cbp_extra_n2_samp <- lapply(1:nrow(cbp_extra_n2), 
+                                      function(x) {
+                                        samp = sample(x = cbpn2i$intest,
+                                                      size = cbp_extra_n2[x]$est_cat_miss,
+                                                      replace = TRUE,
+                                                      prob = cbpn2i$pest)
+                                        tab = data.table(table(samp))})      
+          cbp_extra_n2_samp <- rbindlist(cbp_extra_n2_samp, idcol = "ID")
+          cbp_extra_n2_samp[, esizecat := paste0("e",samp)]
+          setnames(cbp_extra_n2_samp, "N", "est")
+          cbp_extra_n2 <- merge(cbp_extra_n2[, .(NAICS6, CBPZONE, EmpCatName, ID)],
+                                cbp_extra_n2_samp[,.(ID, est, esizecat)],
+                                by = "ID", allow.cartesian = TRUE)
+        }
+        cbp_extra[[n2]] <- cbp_extra_n2
       }
-      cbp_extra[[n2]] <- cbp_extra_n2
+    
+      cbp_extra_r[[regionnum]] <- rbindlist(cbp_extra)
+      cbp_extra_r[[regionnum]][, ID := NULL]
+    
     }
     
-    cbp_extra <- rbindlist(cbp_extra)
-    cbp_extra[, ID := NULL]
+    cbp_extra_r <- rbindlist(cbp_extra_r, idcol = "modelregion")
     
     # Remove unecessary fields and format to match cbp_extra
     cbp[, c("NAICS2", "establishment", "est_cat_sum", "est_cat_miss") := NULL]
@@ -105,8 +120,8 @@ firm_sim_process_inputs <- function(envir) {
                            value.name = "est")
     
     # Combine with cbp extra and summarize
-    cbp <- rbind(cbp, cbp_extra)
-    cbp <- cbp[, .(est = sum(est)), keyby = .(NAICS6, CBPZONE, EmpCatName, esizecat)]
+    cbp <- rbind(cbp, cbp_extra_r)
+    cbp <- cbp[, .(est = sum(est)), keyby = .(modelregion, CBPZONE, NAICS6, EmpCatName, esizecat)]
     
     # Convert esizecat to an integer (1:8)
     cbp[, esizecat := as.integer(esizecat)]

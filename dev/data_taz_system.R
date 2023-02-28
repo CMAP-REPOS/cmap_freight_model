@@ -163,7 +163,7 @@ faf_global_labels = data.table(FAFZONE = 801:808,
 TAZ_System[faf_global_labels, FAFNAME := i.FAFNAME, on = "FAFZONE"]
 
 # Add a couple more grouping variables
-TAZ_System[, modelregion := ifelse(Mesozone < 150, 1L, 0L)]
+TAZ_System[, modelregion := ifelse(Mesozone < 150, 1L, 2L)] #for sorting with model region first
 TAZ_System[, TAZ_TYPE := ifelse(Mesozone < 150, "MODELREGION", 
                                 ifelse(DistrictNum < 13, "NATIONAL", "INTERNATIONAL"))]
 

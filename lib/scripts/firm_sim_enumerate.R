@@ -10,17 +10,18 @@ firm_synthesis_enumerate <- function(Establishments, EstSizeCategories, TAZEmplo
   EmpCountyPublic[EmpCounty[EmpCatName != "92", .(Emp = sum(Emp)), by = CBPZONE], EmpOther := i.Emp, on = "CBPZONE"]
   EmpCountyPublic[, PctPublic := Emp/EmpOther]
   
-  EstablishmentsMiss <- Establishments[, .(est = sum(est)), by = .(CBPZONE, esizecat)]
+  EstablishmentsMiss <- Establishments[, .(est = sum(est)), keyby = .(modelregion, CBPZONE, esizecat)]
   EstablishmentsMiss[EmpCountyPublic, PctPublic := i.PctPublic, on = "CBPZONE"]
   EstablishmentsMiss[, estPublic := est * PctPublic]
   EstablishmentsMiss[, estPublic := bucketRound(estPublic)]
   
   Establishments <- rbind(Establishments,
-                          EstablishmentsMiss[, .(NAICS6 = 920000, CBPZONE,
+                          EstablishmentsMiss[, .(modelregion, CBPZONE, NAICS6 = 920000, 
                                                  EmpCatName = "92", esizecat, est = estPublic)])
   
   # Enumerates the agent businesses using the est variable.
   Firms <- Establishments[rep(seq_len(Establishments[, .N]), est),]
+  setkey(Firms, modelregion, CBPZONE, NAICS6, EmpCatName, esizecat)
 
   # Estimate the number of employees
   # Sample from the employment range using probabilities that approximate a declining distribution (1 more likely than 2, etc)
@@ -35,7 +36,7 @@ firm_synthesis_enumerate <- function(Establishments, EstSizeCategories, TAZEmplo
                          replace = TRUE,
                          prob = seq(EmpProb[esizecat],1, 
                                     by = -(EmpProb[esizecat] - 1)/EmpDiff[esizecat])), 
-        keyby = esizecat]
+        by = .(modelregion, esizecat)]
   
   # Add an ID and firm type
   Firms[, BusID := .I]
