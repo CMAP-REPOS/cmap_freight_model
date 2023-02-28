@@ -21,7 +21,7 @@ firm_sim <- function(Establishments) {
     if(SCENARIO_NAME == BASE_SCENARIO_BASE_NAME){
       
       cat("Creating Base Year Establishment List", "\n")
-    
+      
       # Run steps
       progressUpdate(prop = 1/12, dir = SCENARIO_LOG_PATH)
       FirmsDomestic <- firm_synthesis_enumerate(Establishments = Establishments,
@@ -36,12 +36,22 @@ firm_sim <- function(Establishments) {
       
       # Scale the emplyoment
       progressUpdate(prop = 3/12, dir = SCENARIO_LOG_PATH)
-      FirmsDomestic <- scaleEstablishmentsTAZEmployment(RegionFirms = FirmsDomestic, 
-                                                        TAZEmployment = TAZEmployment, 
+      FirmsRegion <- scaleEstablishmentsTAZEmployment(RegionFirms = FirmsDomestic[modelregion == 1], 
+                                                      TAZEmployment = TAZEmployment[TAZ %in% BASE_TAZ_INTERNAL], 
+                                                      NewFirmsProportion = 0,
+                                                      MaxBusID = max(FirmsDomestic$BusID),
+                                                      EstSizeCategories = EstSizeCategories,
+                                                      TAZEmploymentShape = "LONG")
+      
+      FirmsNational <- scaleEstablishmentsTAZEmployment(RegionFirms = FirmsDomestic[modelregion == 2], 
+                                                        TAZEmployment = TAZEmployment[TAZ %in% BASE_TAZ_NATIONAL], 
                                                         NewFirmsProportion = 0,
-                                                        MaxBusID = max(FirmsDomestic$BusID),
+                                                        MaxBusID = max(FirmsRegion$BusID),
                                                         EstSizeCategories = EstSizeCategories,
                                                         TAZEmploymentShape = "LONG")
+      
+      FirmsDomestic <- rbind(FirmsRegion, FirmsNational)
+      rm(FirmsRegion, FirmsNational)
       
     } else {
       
@@ -58,12 +68,22 @@ firm_sim <- function(Establishments) {
         rm(firm_sim_results)
         
         # Scale the emplyoment
-        FirmsDomestic <- scaleEstablishmentsTAZEmployment(RegionFirms = FirmsDomestic, 
-                                                          TAZEmployment = TAZEmployment, 
+        FirmsRegion <- scaleEstablishmentsTAZEmployment(RegionFirms = FirmsDomestic[modelregion == 1], 
+                                                        TAZEmployment = TAZEmployment[TAZ %in% BASE_TAZ_INTERNAL], 
+                                                        NewFirmsProportion = BASE_NEW_FIRMS_PROP,
+                                                        MaxBusID = max(FirmsDomestic$BusID),
+                                                        EstSizeCategories = EstSizeCategories,
+                                                        TAZEmploymentShape = "LONG")
+        
+        FirmsNational <- scaleEstablishmentsTAZEmployment(RegionFirms = FirmsDomestic[modelregion == 2], 
+                                                          TAZEmployment = TAZEmployment[TAZ %in% BASE_TAZ_NATIONAL], 
                                                           NewFirmsProportion = BASE_NEW_FIRMS_PROP,
-                                                          MaxBusID = max(FirmsDomestic$BusID),
+                                                          MaxBusID = max(FirmsRegion$BusID),
                                                           EstSizeCategories = EstSizeCategories,
                                                           TAZEmploymentShape = "LONG")
+        
+        FirmsDomestic <- rbind(FirmsRegion, FirmsNational)
+        rm(FirmsRegion, FirmsNational)
         
       } else {
         
@@ -82,7 +102,7 @@ firm_sim <- function(Establishments) {
                   on = "EmpCatName"]
     
     FirmsDomestic[TAZ_System, 
-                  c("Mesozone", "CountyFIPS") := .(i.Mesozone, i.CountyFIPS), 
+                  c("Mesozone", "CBPZONE") := .(i.Mesozone, i.CBPZONE), 
                   on = "TAZ"]
     
     cat("Creating Foreign Establishment List", "\n")
