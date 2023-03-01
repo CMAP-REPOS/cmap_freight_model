@@ -131,7 +131,8 @@ firm_sim <- function(Establishments) {
                                           fromwhl = io_list$fromwhl,
                                           FirmsDomestic = FirmsDomestic,
                                           FirmsForeign = FirmsForeign,
-                                          unitcost = unitcost)
+                                          unitcost = unitcost,
+                                          EstSizeCategories = EstSizeCategories)
     
     cat("Creating Consumers Table", "\n")
     

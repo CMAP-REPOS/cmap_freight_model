@@ -1,12 +1,12 @@
 # Create producers/suppliers database
-firm_synthesis_producers <- function(io, fromwhl, FirmsDomestic, FirmsForeign, unitcost, maxbusid){
+firm_synthesis_producers <- function(io, fromwhl, FirmsDomestic, FirmsForeign, unitcost, EstSizeCategories){
 
   # All agents that produce some SCTG commodity become potential producers
   # Domestic Producers
-  producers.domestic <- FirmsDomestic[Commodity_SCTG > 0 & substr(Industry_NAICS6_Make, 1, 2) != "42",][, n2 := NULL]
+  producers.domestic <- FirmsDomestic[Commodity_SCTG > 0 & substr(Industry_NAICS6_Make, 1, 2) != "42",]
 
   # Domestic Wholesalers
-  producers.wholesalers <- FirmsDomestic[substr(Industry_NAICS6_Make, 1, 2) == "42",][, n2 := NULL]
+  producers.wholesalers <- FirmsDomestic[substr(Industry_NAICS6_Make, 1, 2) == "42",]
 
   # Foreigh Producers
   producers.foreign <- FirmsForeign[FirmType == "ForeignProducer"]
@@ -71,7 +71,7 @@ firm_synthesis_producers <- function(io, fromwhl, FirmsDomestic, FirmsForeign, u
 
   # Estimate employment and size category
   producers.foreign[, Emp := pmax(round(ProdVal / ValEmp), 1)]
-  producers.foreign[, esizecat := findInterval(Emp, EmpBounds[1:8])]
+  producers.foreign[, esizecat := findInterval(Emp, EstSizeCategories$LowerBound)]
 
   # Add on units costs
   producers.foreign[unitcost,
@@ -96,7 +96,7 @@ firm_synthesis_producers <- function(io, fromwhl, FirmsDomestic, FirmsForeign, u
   producers.foreign[, est := NULL]
 
   # calculate other fields required in producers tables
-  producers.foreign[, MESOZONE := CBPZONE + 150L]
+  producers.foreign[, Mesozone := CBPZONE + 150L]
   producers.foreign[, TAZ := as.numeric(NA)]
   producers.foreign[, BusID := max(FirmsDomestic$BusID) + .I]
 
@@ -167,7 +167,8 @@ firm_synthesis_producers <- function(io, fromwhl, FirmsDomestic, FirmsForeign, u
   producers <- rbind(producers.domestic[, ProdType := 1],
                      producers.foreign[, ProdType := 2],
                      producers.wholesalers[, ProdType := 3],
-                     use.names = TRUE)
+                     use.names = TRUE,
+                     fill = TRUE)
   
   # To simplify simulation, remove very small producers by bucket rounding the ProdCap and removing any resulting 0 tons producers
   # Round by Industry_NAICS6_Make, Commodity_SCTG, and OutputCommodity to maintain commodity/NAICS distribution 
@@ -177,11 +178,11 @@ firm_synthesis_producers <- function(io, fromwhl, FirmsDomestic, FirmsForeign, u
   producers <- producers[ProdCap > 0.5]
   
   # Prepare for Writing out a producers file for each NAICS, with each firm represented by:
-  # SellerID (BusID)  Zone (MESOZONE)	NAICS (NAICS6_Make)	Size (Emp)	OutputCommodity (SCTG_Make)	OutputCapacityTons (ProdCap)	NonTransportUnitCost (UnitCost)
+  # SellerID (BusID)  Zone (Mesozone)	NAICS (NAICS6_Make)	Size (Emp)	OutputCommodity (SCTG_Make)	OutputCapacityTons (ProdCap)	NonTransportUnitCost (UnitCost)
   producers[, c("CBPZONE", "esizecat", "ProdVal", "ValEmp") := NULL]
 
   setnames(producers,
-           c("BusID", "MESOZONE", "Industry_NAICS6_Make", "Emp", "ProdCap", "UnitCost"),
+           c("BusID", "Mesozone", "Industry_NAICS6_Make", "Emp", "ProdCap", "UnitCost"),
            c("SellerID", "Zone", "NAICS", "Size", "OutputCapacityTons", "NonTransportUnitCost"))
 
   setkey(producers, OutputCommodity)

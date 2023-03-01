@@ -5,7 +5,7 @@ firm_synthesis_consumers <- function(io, wholesalers, FirmsDomestic, FirmsForeig
 
   # All agents that consume some SCTG commodity are potential consumers
   # Domestic Consumers
-  consumers.domestic <- FirmsDomestic[substr(Industry_NAICS6_Make, 1, 2) != "42",][, n2 := NULL]
+  consumers.domestic <- FirmsDomestic[substr(Industry_NAICS6_Make, 1, 2) != "42",]
 
   # Domestic Wholesalers (previously processed as producers)
   consumers.wholesalers <- wholesalers
