@@ -1,5 +1,5 @@
 # Firm synthesis summary
-firm_synthesis_summary_render <- function(FirmsDomestic, producers, consumers, io, prefweights) {
+firm_synthesis_summary <- function(FirmsDomestic, producers, consumers, io, prefweights) {
 
   # output summaries
   sctgcat <- data.table(Commodity_SCTG = prefweights$Commodity_SCTG,

@@ -182,7 +182,8 @@ firm_sim <- function(Establishments) {
                                      Establishments = Establishments,
                                      FirmsDomestic = FirmsDomestic, 
                                      TAZLandUseCVTM = TAZLandUseCVTM,
-                                     SCTGCheck = SCTGCheck)))
+                                     SCTGCheck = SCTGCheck,
+                                     firms_sum = firms_sum)))
   }
   
 }
