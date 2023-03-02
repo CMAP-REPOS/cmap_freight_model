@@ -36,7 +36,7 @@ firm_synthesis_consumers <- function(io, wholesalers, FirmsDomestic, FirmsForeig
 
   # Merge consumers.domestic with IO data
   consumers.domestic <- merge(io[,.(Industry_NAICS6_Use, Industry_NAICS6_Make, IsBelowThreshold, ValEmp)],
-                              consumers.domestic[, .(Industry_NAICS6_Use, FAFZONE, MESOZONE, Buyer.SCTG = Commodity_SCTG, Emp, BusID, FirmType)],
+                              consumers.domestic[, .(Industry_NAICS6_Use, FAFZONE, Mesozone, Buyer.SCTG = Commodity_SCTG, Emp, BusID, FirmType)],
                               by = "Industry_NAICS6_Use",
                               allow.cartesian = TRUE)
 
@@ -84,7 +84,7 @@ firm_synthesis_consumers <- function(io, wholesalers, FirmsDomestic, FirmsForeig
 
   # Rename fields
   setnames(consumers.domestic,
-           c("BusID","MESOZONE","Industry_NAICS6_Make","Industry_NAICS6_Use","Emp"),
+           c("BusID","Mesozone","Industry_NAICS6_Make","Industry_NAICS6_Use","Emp"),
            c("BuyerID","Zone","InputCommodity","NAICS","Size"))
 
   # Foreign consumption
@@ -118,7 +118,7 @@ firm_synthesis_consumers <- function(io, wholesalers, FirmsDomestic, FirmsForeig
   consumers.foreign[, est := NULL]
 
   # Calculate other fields required in consumers tables
-  consumers.foreign[, MESOZONE := CBPZONE + 150L]
+  consumers.foreign[, Mesozone := CBPZONE + 150L]
 
   # Add foreign consumers on after the foreign producers
   consumers.foreign[,BusID:= maxbusid + .I]
@@ -135,7 +135,7 @@ firm_synthesis_consumers <- function(io, wholesalers, FirmsDomestic, FirmsForeig
 
   # Rename fields
   setnames(consumers.foreign,
-           c("BusID","MESOZONE","Industry_NAICS6_Make","Industry_NAICS6_Use","Emp"),
+           c("BusID","Mesozone","Industry_NAICS6_Make","Industry_NAICS6_Use","Emp"),
            c("BuyerID","Zone","InputCommodity","NAICS","Size"))
 
   # Process the wholesalers into format for combining with other consumers
@@ -156,7 +156,8 @@ firm_synthesis_consumers <- function(io, wholesalers, FirmsDomestic, FirmsForeig
   consumers.pmg <- rbind(consumers.domestic[IsBelowThreshold == TRUE][,IsBelowThreshold := NULL][, ConsType := 1],
                          consumers.foreign[IsBelowThreshold == TRUE][,IsBelowThreshold := NULL][, ConsType := 2],
                          consumers.wholesalers,
-                         use.names=TRUE)
+                         use.names = TRUE,
+                         fill = TRUE)
   gc()
   
   # To simplify simulation, remove very small consumption requirements by bucket rounding the PurchaseAmountTons

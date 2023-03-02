@@ -102,7 +102,7 @@ firm_sim <- function(Establishments) {
                   on = "EmpCatName"]
     
     FirmsDomestic[TAZ_System, 
-                  c("Mesozone", "CBPZONE") := .(i.Mesozone, i.CBPZONE), 
+                  c("Mesozone", "CBPZONE", "FAFZONE") := .(i.Mesozone, i.CBPZONE, i.FAFZONE), 
                   on = "TAZ"]
     
     cat("Creating Foreign Establishment List", "\n")
