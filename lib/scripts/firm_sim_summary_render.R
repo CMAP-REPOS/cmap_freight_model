@@ -1,5 +1,5 @@
 # Firm synthesis summary
-firm_synthesis_summary_render <- function(FirmsDomesticUnscaled, FirmsDomestic, producers, consumers, io, prefweights, emp_control, c_n6_labels, c_mz_faf_reg) {
+firm_synthesis_summary_render <- function(FirmsDomestic, producers, consumers, io, prefweights) {
 
   # output summaries
   sctgcat <- data.table(Commodity_SCTG = prefweights$Commodity_SCTG,
@@ -119,17 +119,6 @@ firm_synthesis_summary_render <- function(FirmsDomesticUnscaled, FirmsDomestic, 
   #output
   capture.output(print(firms_sum),file=file.path(SCENARIO_OUTPUT_PATH,"firm_syn.txt" ))
   fwrite(match_summary_naics_sctg, file=file.path(SCENARIO_OUTPUT_PATH,"match_summary_naics_sctg.csv" ))
-
-  # Data to summarize in dashboard
-  # 1. FirmsDomesticUnscaled -- copy of FirmsDomestic table prior to scaling
-  # 2. FirmsDomestic -- FirmsDomestic table after scaling, at end of firm syn script
-  # 3. emp_control -- input employment control data
-
-  # Render the dashboard
-  rmarkdown::render(input = "./lib/Dashboard/CMAP_FirmSynthesis_Summary.Rmd",
-                    output_file = paste0("CMAP_FirmSynthesis_Summary.html"),
-                    output_dir = SCENARIO_OUTPUT_PATH)
-
 
   return(firms_sum)
 

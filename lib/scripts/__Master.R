@@ -190,6 +190,18 @@ if (SCENARIO_RUN_DB) {
   db_inputs <- new.env()
   db_build_process_inputs(envir = db_inputs)
   
+  
+  ### TODO integrate the firm synthesis summary into dashboard
+  # # Data to summarize in dashboard
+  # # 1. FirmsDomesticUnscaled -- copy of FirmsDomestic table prior to scaling
+  # # 2. FirmsDomestic -- FirmsDomestic table after scaling, at end of firm syn script
+  # # 3. emp_control -- input employment control data
+  # 
+  # # Render the dashboard
+  # rmarkdown::render(input = "./lib/Dashboard/CMAP_FirmSynthesis_Summary.Rmd",
+  #                   output_file = paste0("CMAP_FirmSynthesis_Summary.html"),
+  #                   output_dir = SCENARIO_OUTPUT_PATH)
+  
   # Generate dashboard and spreadsheet
   cat("Rendering Freight Model Dashboard and Spreadsheet", "\n")
   dashboardFileLoc <- suppressWarnings(suppressMessages(

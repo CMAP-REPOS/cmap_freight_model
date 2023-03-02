@@ -22,7 +22,7 @@ firm_sim_process_inputs <- function(envir) {
                       firm_sim_producers         = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_producers.R"),
                       firm_sim_sample_groups     = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_sample_groups.R"),
                       firm_sim_scaling           = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_scaling.R"),
-                      firm_sim_summary_render    = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_summary_render.R"),
+                      firm_sim_summary           = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_summary.R"),
                       firm_sim_write_groups      = file.path(SYSTEM_SCRIPTS_PATH, "firm_sim_write_groups.R"))
   
   loadInputs(files = project.files, envir = envir)

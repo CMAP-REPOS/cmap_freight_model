@@ -146,18 +146,14 @@ firm_sim <- function(Establishments) {
                                           maxbusid = max(producers$SellerID),
                                           writeConsumersIncremental = TRUE) #change to TRUE for production
     
-    cat("Firm Synthesis Summary Dashboard", "\n")
+    cat("Firm Synthesis Summary", "\n")
     
     progressUpdate(prop = 9/12, dir = SCENARIO_LOG_PATH)
-    firms_sum <- firm_synthesis_summary_render(FirmsDomesticUnscaled = FirmsDomesticUnscaled,
-                                               FirmsDomestic = FirmsDomestic,
-                                               producers = producers,
-                                               consumers = consumers,
-                                               io = io_list$io,
-                                               prefweights = prefweights,
-                                               emp_control = emp_control,
-                                               c_n6_labels = c_n6_labels,
-                                               c_mz_faf_reg = c_mz_faf_reg)
+    firms_sum <- firm_synthesis_summary(FirmsDomestic = FirmsDomestic,
+                                        producers = producers,
+                                        consumers = consumers,
+                                        io = io_list$io,
+                                        prefweights = prefweights)
     
     cat("Writing NAICS Market Groups", "\n")
     
