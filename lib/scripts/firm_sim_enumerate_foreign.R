@@ -1,6 +1,6 @@
 
 #Enumerate foreign firms and merge with correspondenses
-firm_synthesis_enumerate_foreign <- function(for_prod, for_cons, c_n6_n6io_sctg, EmpBounds){
+firm_synthesis_enumerate_foreign <- function(for_prod, for_cons, c_n6_n6io_sctg){
 
   # Both for_prod and for_cons include foreign public production/consumption value.
   # Reallocate within each country to the remaining privately owned industies in proportion to their prod/cons value
@@ -16,7 +16,7 @@ firm_synthesis_enumerate_foreign <- function(for_prod, for_cons, c_n6_n6io_sctg,
   for_prod_sum[is.na(USImpValNoPub), USImpValNoPub := 0]
   for_prod_sum[, ProdScale := ifelse(USImpValNoPub > 0, USImpVal/USImpValNoPub, 0)]
 
-  # account for counties with no non-public production by reallocating within FAF ZONE so FAF ZONE production is conserved
+  # account for countries with no non-public production by reallocating within FAF ZONE so FAF ZONE production is conserved
   for_prod_faf <- for_prod_sum[, .(USImpVal = sum(USImpVal)), by = FAFZONE]
   for_prod_faf_no_pub <- for_prod_sum[USImpValNoPub > 0, .(USImpValNoPub = sum(USImpVal)), by = FAFZONE]
   for_prod_faf <- merge(for_prod_faf,

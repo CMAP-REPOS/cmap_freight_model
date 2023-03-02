@@ -110,8 +110,7 @@ firm_sim <- function(Establishments) {
     progressUpdate(prop = 5/12, dir = SCENARIO_LOG_PATH)
     FirmsForeign <- firm_synthesis_enumerate_foreign(for_prod = for_prod,
                                                      for_cons = for_cons,
-                                                     c_n6_n6io_sctg = c_n6_n6io_sctg,
-                                                     EmpBounds = EmpBounds)
+                                                     c_n6_n6io_sctg = c_n6_n6io_sctg)
     
     # Check on foreign and domestic firms
     SCTGCheck <- merge(FirmsDomestic[, .(FirmsDomestic = .N), by = Commodity_SCTG][order(Commodity_SCTG)],

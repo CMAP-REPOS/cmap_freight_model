@@ -19,6 +19,13 @@ firm_synthesis_input_output <- function(io, c_n6_n6io_sctg){
   # All construction activity is in place, so it is on the use side, as far as freight movement is concerned
   io[substr(Industry_NAICS6_Make,1,2) == "23", Industry_NAICS6_Make := "230000"]
   io[substr(Industry_NAICS6_Use,1,2) == "23", Industry_NAICS6_Use := "230000"]
+  
+  # Simplify government
+  # simplify io table to that all government consumption is labeled as 920000 to match the firms list
+  # there is no government production in the IO table
+  io[grep("S", Industry_NAICS6_Use), Industry_NAICS6_Use := "920000"]
+  
+  # Aggregate after simplification
   io <- io[, .(ProVal = sum(ProVal)), by = .(Industry_NAICS6_Make, Industry_NAICS6_Use)]
 
   # Wholesalers: grouped into 42000 in IO tables, but 6 digit NAICS codes in employment data
