@@ -165,7 +165,8 @@ firm_sim <- function(Establishments) {
     
     progressUpdate(prop = 11/12, dir = SCENARIO_LOG_PATH)
     producers_consumers_list <- firm_synthesis_write_groups(producers = producers,
-                                                            consumers = consumers)
+                                                            consumers = consumers,
+                                                            naics_set = naics_set)
     
   } # end run step 2
   
