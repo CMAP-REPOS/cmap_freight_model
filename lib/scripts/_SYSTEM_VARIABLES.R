@@ -1,5 +1,5 @@
 # packages for model and report dashboard
-SYSTEM_PKGS <- c("data.table", "rFreight", "rhdf5", "pscl", "TSP", "apollo")
+SYSTEM_PKGS <- c("data.table", "rFreight", "rhdf5", "pscl", "TSP", "apollo", "fst")
 
 SYSTEM_REPORT_PKGS <- c("DT", "flexdashboard", "leaflet", "plotly", "scales", "rgdal", "rgeos",
                         "pander", "geojsonlint", "stringr", "kableExtra", "openxlsx")
