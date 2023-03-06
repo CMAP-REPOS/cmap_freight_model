@@ -1,0 +1,14 @@
+CHID,CHDESC,VAR,TYPE,COEFF
+1,<6 AM,asc1,Constant,-5.97
+1,<6 AM,TotPUDOWeight,Variable,0.0454
+1,<6 AM,TotStopDur,Variable,0.429
+1,<6 AM,TotTourTime,Variable,0.706
+2,6~8AM,asc2,Constant,-3.13
+2,6~8AM,TotPUDOWeight,Variable,0.0484
+2,6~8AM,TotStopDur,Variable,0.429
+2,6~8AM,TotTourTime,Variable,0.282
+3,8~9AM,asc3,Constant,-2.05
+3,8~9AM,TotStopDur,Variable,0.429
+4,9~10AM,asc4,Constant,-1.6
+4,9~10AM,TotStopDur,Variable,0.226
+5,>10AM,asc5,Constant,0

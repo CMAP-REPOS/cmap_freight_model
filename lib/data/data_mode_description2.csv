@@ -1,0 +1,58 @@
+ModeNumber,Mode,Label,Description,MultipleModes,International
+1,Water,cW145,"Cost, Water using Port 145",Water,Water
+2,Water,cW146,"Cost, Water using Port 146",Water,Water
+3,Rail,cCarload,"Cost, Carload Direct",Rail,Rail
+4,Multiple,c1fc0,"Cost, FTL(ExtDray)-Carload remainder",Truck-Rail,Multiple
+5,Multiple,c0cf147,"Cost, Carload-FTL with stop at 147",Rail-Truck,Multiple
+6,Multiple,c0cf148,"Cost, Carload-FTL with stop at 148",Rail-Truck,Multiple
+7,Multiple,c0cf149,"Cost, Carload-FTL with stop at 149",Rail-Truck,Multiple
+8,Multiple,c0cf150,"Cost, Carload-FTL with stop at 150",Rail-Truck,Multiple
+9,Multiple,c1fcf147,"Cost, FTL-Carload-FTL with stop at 147",Truck-Rail-Truck,Multiple
+10,Multiple,c1fcf148,"Cost, FTL-Carload-FTL with stop at 148",Truck-Rail-Truck,Multiple
+11,Multiple,c1fcf149,"Cost, FTL-Carload-FTL with stop at 149",Truck-Rail-Truck,Multiple
+12,Multiple,c1fcf150,"Cost, FTL-Carload-FTL with stop at 150",Truck-Rail-Truck,Multiple
+13,Rail,cIMX,"Cost, IMX Direct",Rail,Rail
+14,Multiple,c1fi0,"Cost, FTL(ExtDray)-IMX remainder",Truck-Rail,Multiple
+15,Multiple,c0iL147,"Cost, IMX-LTL with stop at 147",Rail-Truck,Multiple
+16,Multiple,c0iL148,"Cost, IMX-LTL with stop at 148",Rail-Truck,Multiple
+17,Multiple,c0iL149,"Cost, IMX-LTL with stop at 149",Rail-Truck,Multiple
+18,Multiple,c0iL150,"Cost, IMX-LTL with stop at 150",Rail-Truck,Multiple
+19,Multiple,c0if147,"Cost, IMX-FTL with stop at 147",Rail-Truck,Multiple
+20,Multiple,c0if148,"Cost, IMX-FTL with stop at 148",Rail-Truck,Multiple
+21,Multiple,c0if149,"Cost, IMX-FTL with stop at 149",Rail-Truck,Multiple
+22,Multiple,c0if150,"Cost, IMX-FTL with stop at 150",Rail-Truck,Multiple
+23,Multiple,c1fif147,"Cost, FTL-IMX-FTL with stop at 147",Truck-Rail-Truck,Multiple
+24,Multiple,c1fif148,"Cost, FTL-IMX-FTL with stop at 148",Truck-Rail-Truck,Multiple
+25,Multiple,c1fif149,"Cost, FTL-IMX-FTL with stop at 149",Truck-Rail-Truck,Multiple
+26,Multiple,c1fif150,"Cost, FTL-IMX-FTL with stop at 150",Truck-Rail-Truck,Multiple
+27,Multiple,c1LiL147,"Cost, LTL-IMX-LTL with stop at 147",Truck-Rail-Truck,Multiple
+28,Multiple,c1LiL148,"Cost, LTL-IMX-LTL with stop at 148",Truck-Rail-Truck,Multiple
+29,Multiple,c1LiL149,"Cost, LTL-IMX-LTL with stop at 149",Truck-Rail-Truck,Multiple
+30,Multiple,c1LiL150,"Cost, LTL-IMX-LTL with stop at 150",Truck-Rail-Truck,Multiple
+31,Truck,cFTL,"Cost, FTL Direct",Truck,Truck
+32,Truck,c0fL133,"Cost, FTL-LTL with stop at 133",Truck-Truck,Truck
+33,Truck,c0fL134,"Cost, FTL-LTL with stop at 134",Truck-Truck,Truck
+34,Truck,c0fL135,"Cost, FTL-LTL with stop at 135",Truck-Truck,Truck
+35,Truck,c0fL136,"Cost, FTL-LTL with stop at 136",Truck-Truck,Truck
+36,Truck,c0fL137,"Cost, FTL-LTL with stop at 137",Truck-Truck,Truck
+37,Truck,c0fL138,"Cost, FTL-LTL with stop at 138",Truck-Truck,Truck
+38,Truck,c0fL139,"Cost, FTL-LTL with stop at 139",Truck-Truck,Truck
+39,Truck,c1LfL133,"Cost, LTL-FTL-LTL with stop at 133",Truck-Truck-Truck,Truck
+40,Truck,c1LfL134,"Cost, LTL-FTL-LTL with stop at 134",Truck-Truck-Truck,Truck
+41,Truck,c1LfL135,"Cost, LTL-FTL-LTL with stop at 135",Truck-Truck-Truck,Truck
+42,Truck,c1LfL136,"Cost, LTL-FTL-LTL with stop at 136",Truck-Truck-Truck,Truck
+43,Truck,c1LfL137,"Cost, LTL-FTL-LTL with stop at 137",Truck-Truck-Truck,Truck
+44,Truck,c1LfL138,"Cost, LTL-FTL-LTL with stop at 138",Truck-Truck-Truck,Truck
+45,Truck,c1LfL139,"Cost, LTL-FTL-LTL with stop at 139",Truck-Truck-Truck,Truck
+46,Truck,cLTL,"Cost, LTL Direct",Truck,Truck
+47,Air,cA141,"Cost, Air using Airport 141",Air,Air
+48,Air,cA142,"Cost, Air using Airport 142",Air,Air
+49,Air,cA143,"Cost, Air using Airport 143",Air,Air
+50,Air,cA144,"Cost, Air using Airport 144",Air,Air
+51,Truck,cFTL40dir,"Cost, FTL-40 Ft. Container (Direct from Port)",Truck,Water
+52,Truck,cLTL40dir,"Cost, LTL-40 Ft. Container (Direct from Port)",Truck,Water
+53,Truck,cFTL53tload,"Cost, FTL-53 with Transload at Port",Truck,Water
+54,Truck,cLTL53tload,"Cost, LTL-53 with Transload at Port",Truck,Water
+55,Pipeline,cPsctg16,"Cost, Pipeline for Crude Petroleum, SCTG 16 only",Truck-Pipeline-Truck,Pipeline
+56,Pipeline,cPsctg1718,"Cost, Pipeline for Petroleum Products, SCTG 17-18 only",Truck-Pipeline-Truck,Pipeline
+57,Pipeline,cPsctg19,"Cost, Pipeline for Coal NEC, SCTG 19 only",Truck-Pipeline-Truck,Pipeline
