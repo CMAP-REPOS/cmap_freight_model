@@ -1,112 +1,164 @@
 sc_sim_markets <- function(naics_set){
   
-  # Loop over markets -- combinations of naics code and SCTG code
-  # Prepare future processors
-  # only allocate as many workers as we need (including one for future itself) or to the specified maximum
-  plan(multiprocess, workers = USER_COST_CORES) 
-  marketInProcess <- list()
+  # # Loop over markets -- combinations of naics code and SCTG code
+  # # Prepare future processors
+  # # only allocate as many workers as we need (including one for future itself) or to the specified maximum
+  # plan(multiprocess, workers = USER_COST_CORES) 
+  # marketInProcess <- list()
+  # 
+  # # Create a log file for this step
+  # log_file_path <- file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_market.txt")
+  # file.create(log_file_path)
+  # 
+  # # Read the outputs from firm synthesis for this market, combine, and allocate to groups
+  # for(market_number in 1:nrow(naics_set)){
+  #   market <- as.character(naics_set$Market[market_number])
+  #   groups <- naics_set$groups[market_number]
+  #   sprod <- ifelse(naics_set$Split_Prod[market_number], 1, 0)
+  #   
+  #   # Create place to accumulate group results
+  #   marketInProcess[[paste0("market-", market)]] <- list()
+  #   write(print(paste0(Sys.time(), ": Starting Market: ", market, " with ", groups, " groups. sprod: ", sprod)), file = log_file_path, append = TRUE)
+  #   taskName <- paste0( "Create_Markets_market-", market)
+  #   write(print(paste0(Sys.time(), ": Submitting task '", taskName, "' to join ", getNumberOfRunningTasks(), " currently running tasks")), file = log_file_path, append = TRUE)
+  #     
+  #   startAsyncTask(
+  #     taskName, # Name of the task running
+  #     future({ # Start the future processor
+  #         
+  #       # Write message to the console
+  #       msg <- write(print(paste0(Sys.time(), " Allocating groups for: ", market)), file = log_file_path, append = TRUE)
+  #         
+  #       # Run create_pmg_sample_groups function
+  #       output <- capture.output(create_pmg_sample_groups(market, groups, sprod))
+  #       return(output) #no need to return anything to future task handler
+  #     }),
+  #       callback = function(asyncResults) {
+  #         # asyncResults is: list(asyncTaskName,
+  #         #                        taskResult,
+  #         #                        startTime,
+  #         #                        endTime,
+  #         #                        elapsedTime,
+  #         #                        caughtError,
+  #         #                        caughtWarning)
+  #         
+  #         #check that files were created
+  #         taskName <- asyncResults[["asyncTaskName"]]
+  #         taskInfo <- data.table::data.table(namedCapture::str_match_named(taskName, "^.*market[-](?P<taskMarket>.*)$"))[1,]
+  #         taskResult <- asyncResults[["taskResult"]]
+  #         write(print(taskResult), file = log_file_path, append = TRUE)
+  #         marketKey <- paste0("market-", taskInfo$taskMarket)
+  #         marketoutputs <- marketInProcess[[marketKey]]
+  #         if (is.null(marketoutputs)) {
+  #           stop(
+  #             paste0(
+  #               "for taskInfo$taskMarket ",
+  #               taskInfo$taskMarket,
+  #               " marketInProcess[[taskInfo$taskMarket]] (marketoutputs) is NULL! "
+  #             )
+  #           )
+  #         }
+  #         
+  #         marketKey <- paste0("market-", taskInfo$taskMarket)
+  #         marketoutputs[[marketKey]] <- paste0(Sys.time(), ": Finished!")
+  #         
+  #         #don't understand why this is necessary but apparently have to re-store list
+  #         marketInProcess[[marketKey]] <<- marketoutputs
+  #         
+  #         market_file_path <- file.path(SCENARIO_OUTPUT_PATH,
+  #                                     paste0(taskInfo$taskMarket,".Rdata"))
+  #         market_file_exists <- file.exists(market_file_path)
+  #         
+  #         write(print(paste0(Sys.time(),": Finished ",taskName,
+  #                            ", Elapsed time since submitted: ",
+  #                            asyncResults[["elapsedTime"]],
+  #                            ", market_file_exists: ",market_file_exists)),
+  #               file = log_file_path,append = TRUE)
+  #         
+  #         if (!market_file_exists) {
+  #           msg <- paste("***ERROR*** Did not find expected market file '",
+  #                        market_file_path,"'.")
+  #           
+  #           write(print(msg), file = log_file_path, append = TRUE)
+  #           stop(msg)
+  #         }
+  #         if (length(marketoutputs) == 1) {
+  #           #delete Market from tracked outputs
+  #           marketInProcess[[marketKey]] <<- NULL
+  #           write(print(paste0(Sys.time(),": Completed Processing Outputs of Market ",
+  #                              taskInfo$taskMarket,". Remaining marketInProcess=",
+  #                              paste0(collapse = ", ", names(marketInProcess)))), 
+  #                 file = log_file_path, append = TRUE)
+  #           } 
+  #       },
+  #       debug = FALSE
+  #     ) #end call to startAsyncTask
+  #     processRunningTasks(wait = FALSE, debug = TRUE, maximumTasksToResolve = 1)
+  #   }# Finished creating sample groups
+  # 
+  # # Wait until all tasks are finished
+  # processRunningTasks(wait = TRUE, debug = TRUE)
+  # 
+  # if (length(marketInProcess) != 0) {
+  #   stop(paste(
+  #     "At end of sc_sim_markets there were still some unfinished markets! Unfinished: ", 
+  #     paste0(collapse = ", ", names(marketInProcess))))
+  # }
+  # 
+  # # Stop the future processors
+  # future:::ClusterRegistry("stop")
   
-  # Create a log file for this step
-  log_file_path <- file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_market.txt")
-  file.create(log_file_path)
+  (t0 <- Sys.time())
   
-  # Read the outputs from firm synthesis for this market, combine, and allocate to groups
-  for(market_number in 1:nrow(naics_set)){
-    market <- as.character(naics_set$Market[market_number])
-    groups <- naics_set$groups[market_number]
-    sprod <- ifelse(naics_set$Split_Prod[market_number], 1, 0)
+  if(USER_COST_CORES > 1){
+    require(parallel)
     
-    # Create place to accumulate group results
-    marketInProcess[[paste0("market-", market)]] <- list()
-    write(print(paste0(Sys.time(), ": Starting Market: ", market, " with ", groups, " groups. sprod: ", sprod)), file = log_file_path, append = TRUE)
-    taskName <- paste0( "Create_Markets_market-", market)
-    write(print(paste0(Sys.time(), ": Submitting task '", taskName, "' to join ", getNumberOfRunningTasks(), " currently running tasks")), file = log_file_path, append = TRUE)
-      
-    startAsyncTask(
-      taskName, # Name of the task running
-      future({ # Start the future processor
-          
-        # Write message to the console
-        msg <- write(print(paste0(Sys.time(), " Allocating groups for: ", market)), file = log_file_path, append = TRUE)
-          
-        # Run create_pmg_sample_groups function
-        output <- capture.output(create_pmg_sample_groups(market, groups, sprod))
-        return(output) #no need to return anything to future task handler
-      }),
-        callback = function(asyncResults) {
-          # asyncResults is: list(asyncTaskName,
-          #                        taskResult,
-          #                        startTime,
-          #                        endTime,
-          #                        elapsedTime,
-          #                        caughtError,
-          #                        caughtWarning)
-          
-          #check that files were created
-          taskName <- asyncResults[["asyncTaskName"]]
-          taskInfo <- data.table::data.table(namedCapture::str_match_named(taskName, "^.*market[-](?P<taskMarket>.*)$"))[1,]
-          taskResult <- asyncResults[["taskResult"]]
-          write(print(taskResult), file = log_file_path, append = TRUE)
-          marketKey <- paste0("market-", taskInfo$taskMarket)
-          marketoutputs <- marketInProcess[[marketKey]]
-          if (is.null(marketoutputs)) {
-            stop(
-              paste0(
-                "for taskInfo$taskMarket ",
-                taskInfo$taskMarket,
-                " marketInProcess[[taskInfo$taskMarket]] (marketoutputs) is NULL! "
-              )
-            )
-          }
-          
-          marketKey <- paste0("market-", taskInfo$taskMarket)
-          marketoutputs[[marketKey]] <- paste0(Sys.time(), ": Finished!")
-          
-          #don't understand why this is necessary but apparently have to re-store list
-          marketInProcess[[marketKey]] <<- marketoutputs
-          
-          market_file_path <- file.path(SCENARIO_OUTPUT_PATH,
-                                      paste0(taskInfo$taskMarket,".Rdata"))
-          market_file_exists <- file.exists(market_file_path)
-          
-          write(print(paste0(Sys.time(),": Finished ",taskName,
-                             ", Elapsed time since submitted: ",
-                             asyncResults[["elapsedTime"]],
-                             ", market_file_exists: ",market_file_exists)),
-                file = log_file_path,append = TRUE)
-          
-          if (!market_file_exists) {
-            msg <- paste("***ERROR*** Did not find expected market file '",
-                         market_file_path,"'.")
-            
-            write(print(msg), file = log_file_path, append = TRUE)
-            stop(msg)
-          }
-          if (length(marketoutputs) == 1) {
-            #delete Market from tracked outputs
-            marketInProcess[[marketKey]] <<- NULL
-            write(print(paste0(Sys.time(),": Completed Processing Outputs of Market ",
-                               taskInfo$taskMarket,". Remaining marketInProcess=",
-                               paste0(collapse = ", ", names(marketInProcess)))), 
-                  file = log_file_path, append = TRUE)
-            } 
-        },
-        debug = FALSE
-      ) #end call to startAsyncTask
-      processRunningTasks(wait = FALSE, debug = TRUE, maximumTasksToResolve = 1)
-    }# Finished creating sample groups
-  
-  # Wait until all tasks are finished
-  processRunningTasks(wait = TRUE, debug = TRUE)
-  
-  if (length(marketInProcess) != 0) {
-    stop(paste(
-      "At end of sc_sim_markets there were still some unfinished markets! Unfinished: ", 
-      paste0(collapse = ", ", names(marketInProcess))))
+    clust <- makeCluster(USER_COST_CORES)
+    
+    clusterCall(clust, 
+                fun = function(packages, lib) lapply(X = as.list(packages), FUN = library, character.only = TRUE, lib.loc = lib),
+                packages = SYSTEM_PKGS, lib = SYSTEM_PKGS_PATH)
+    
+    clusterExport(clust, varlist = getGlobalVars(), envir = .GlobalEnv)
+    
+    clusterExport(clust, 
+                  c("create_pmg_sample_groups",
+                    "naics_set"), 
+                  envir = environment())
+    
+    naicslist <- parLapply(clust, 
+                           1:nrow(naics_set), 
+                           function(x){
+                             create_pmg_sample_groups(market = as.character(naics_set$Market[x]),
+                                                      groups = naics_set$groups[x],
+                                                      sprod = ifelse(naics_set$split_prod[x], 1, 0))
+                           })
+    stopCluster(clust)
+    
+  } else {
+    
+    naicslist <- lapply(1:nrow(naics_set), 
+                        function(x){
+                          create_pmg_sample_groups(market = as.character(naics_set$Market[x]),
+                                                   groups = naics_set$n_groups[x],
+                                                   sprod = ifelse(naics_set$split_prod[x], 1, 0))
+                        })
+    
   }
   
-  # Stop the future processors
-  future:::ClusterRegistry("stop")
+  (t1 <- Sys.time())
+  
+  # Check that the complete set of naics grouped were processed
+  naics_completed <- unlist(naicslist)
+  naics_missing <- naics_set[!Market %in% naics_completed]$Market
+  if(length(naics_missing) > 0) cat("Markets missing from market creation in sc_sim_markets: ", naics_missing)
+  
+  (t2 <- Sys.time())
+  
+  cat(
+    "\n", "Time taken: ",
+    format(round(t2 - t0, 2), units = "mins")
+  )
   
   return(naics_set)
   
