@@ -131,7 +131,7 @@ sc_sim_markets <- function(naics_set){
                            function(x){
                              create_pmg_sample_groups(market = as.character(naics_set$Market[x]),
                                                       groups = naics_set$groups[x],
-                                                      sprod = ifelse(naics_set$split_prod[x], 1, 0))
+                                                      sprod = ifelse(naics_set$Split_Prod[x], 1, 0))
                            })
     stopCluster(clust)
     
@@ -140,8 +140,8 @@ sc_sim_markets <- function(naics_set){
     naicslist <- lapply(1:nrow(naics_set), 
                         function(x){
                           create_pmg_sample_groups(market = as.character(naics_set$Market[x]),
-                                                   groups = naics_set$n_groups[x],
-                                                   sprod = ifelse(naics_set$split_prod[x], 1, 0))
+                                                   groups = naics_set$groups[x],
+                                                   sprod = ifelse(naics_set$Split_Prod[x], 1, 0))
                         })
     
   }
@@ -168,7 +168,12 @@ sc_sim_markets <- function(naics_set){
 create_pmg_sample_groups <- function(market,groups,sprod){
   
   # Load the consumers and producers tables for this market
-  load(file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, ".Rdata")))
+  # load(file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, ".Rdata")))
+  consc <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_consc.fst")),
+                     as.data.table = TRUE)
+  prodc <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_prodc.fst")),
+                     as.data.table = TRUE)
+  
   setkey(consc, Size)
   setkey(prodc, Size)
   
@@ -382,7 +387,9 @@ create_pmg_sample_groups <- function(market,groups,sprod){
   consc <- consc[PurchaseAmountTons >= 1L]
   
   # Save consc and prodc into a workspace
-  save(consc, prodc, consc_orig, prodc_orig, file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, ".Rdata")))
+  # save(consc, prodc, consc_orig, prodc_orig, file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, ".Rdata")))
+  write_fst(consc, path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_consc.fst")))
+  write_fst(prodc, path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_prodc.fst")))
   
   return(paste("Completed create_pmg_sample_groups for market:", market))
 }
