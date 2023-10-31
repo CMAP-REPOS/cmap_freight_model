@@ -26,17 +26,17 @@ if(!("plyr" %in% installed.packages(lib.loc = SYSTEM_PKGS_PATH)[,1])){
 
 # Install rFreight if not currently installed
 if(!("rFreight" %in% installed.packages(lib.loc = SYSTEM_PKGS_PATH)[,1])){
-  rFreightZipName <- list.files(file.path(SYSTEM_APP_PATH, "lib"),
+  rFreightZipName <- list.files(file.path(SYSTEM_APP_PATH, "lib", "pkgs"),
                                 pattern = "rFreight")
   if(length(rFreightZipName)<1){
     stop(paste("rFreight package zip file not available at", 
-               file.path(SYSTEM_APP_PATH, "lib")))
+               file.path(SYSTEM_APP_PATH, "lib", "pkgs")))
   } else if(length(rFreightZipName)>1) {
     stop(paste0("More than one rFreight package zip file available at ", 
-                file.path(SYSTEM_APP_PATH, "lib"), " . ",
+                file.path(SYSTEM_APP_PATH, "lib", "pkgs"), " . ",
                 "Please remove all but the single desired zip file."))
   } else {
-    install.packages(file.path(SYSTEM_APP_PATH, "lib", rFreightZipName),
+    install.packages(file.path(SYSTEM_APP_PATH, "lib", "pkgs", rFreightZipName),
                      lib = file.path(SYSTEM_PKGS_PATH),
                      repos = NULL)
   }

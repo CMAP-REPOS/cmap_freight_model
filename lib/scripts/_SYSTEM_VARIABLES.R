@@ -1,10 +1,10 @@
 # packages for model and report dashboard
 SYSTEM_PKGS <- c("data.table", "rFreight", "rhdf5", "pscl", "TSP", "apollo", "fst")
 
-SYSTEM_REPORT_PKGS <- c("DT", "flexdashboard", "leaflet", "plotly", "scales", "rgdal", "rgeos",
+SYSTEM_REPORT_PKGS <- c("DT", "flexdashboard", "leaflet", "plotly", "scales", "sf",
                         "pander", "geojsonlint", "stringr", "kableExtra", "openxlsx")
 
-SYSTEM_DEV_PKGS <- c("sf", "lwgeom", "ggrepel", "dplyr",
+SYSTEM_DEV_PKGS <- c("lwgeom", "ggrepel", "dplyr",
                      "ggspatial", "bookdown", "leaps")
 
 # combine lists so all install if needed on call to initializeApp
@@ -12,7 +12,7 @@ SYSTEM_DEV_PKGS <- c("sf", "lwgeom", "ggrepel", "dplyr",
 SYSTEM_PKGS <- c(SYSTEM_PKGS, SYSTEM_REPORT_PKGS[!SYSTEM_REPORT_PKGS %in% SYSTEM_PKGS])
 
 SYSTEM_APP_PATH       <- getwd()
-SYSTEM_RFREIGHT_PATH  <- file.path(SYSTEM_APP_PATH, "lib", "rFreight_0.1-35.zip")
+SYSTEM_RFREIGHT_PATH  <- file.path(SYSTEM_APP_PATH, "lib", "pkgs", "rFreight_0.1-38.zip")
 SYSTEM_PKGS_PATH      <- file.path(SYSTEM_APP_PATH, "lib", "pkgs", "library")
 
 # add the library folder to the library search paths -- required for proper install and loading, 
