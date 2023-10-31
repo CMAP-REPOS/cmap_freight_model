@@ -2,7 +2,7 @@
 SYSTEM_PKGS <- c("data.table", "rFreight", "rhdf5", "pscl", "TSP", "apollo", "fst")
 
 SYSTEM_REPORT_PKGS <- c("DT", "flexdashboard", "leaflet", "plotly", "scales", "sf",
-                        "pander", "geojsonlint", "stringr", "kableExtra", "openxlsx")
+                        "pander", "stringr", "kableExtra", "openxlsx")
 
 SYSTEM_DEV_PKGS <- c("lwgeom", "ggrepel", "dplyr",
                      "ggspatial", "bookdown", "leaps")
