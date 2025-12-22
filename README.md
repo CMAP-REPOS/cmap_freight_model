@@ -3,18 +3,22 @@ This repository contains working code for the development of CMAP’s tour-based
 
 After annual commodity flows between individual firms are developed in the national supply chain model, a regional tour-based daily truck model simulates the tours of pickups and deliveries made by individual trucks operating in the CMAP region.
 
-# modelDevelopment branch
+# modelDev2025 branch
 Working version of the code that:
-- update includes updates to transition the code to working in R Version 4.3.1 and with rFreight version 0.1-38
+- update includes updates to transition the code to working in R Version 4.5.1 and with rFreight version 0.1-39
 - incorporates updates to a consistent code structure for all model components
 - transitions the PMG to open R code format as opposed to a compiled C++ application
-- adds a visualization dashboard to view scenario results from the supply chain model
+- adds a visualization dashboard to view scenario results from the supply chain model and ehancements to support scenario to scenario comparisons
 - adds a calibration framework to support calibration of the supply chain model (and other components)
 - updated firm synthesis to operate at the TAZ level in the CMAP region to produce inputs for a commercial vehicle model
+- updated base year model with 2022 inputs and select outputs (larger outputs not included in the repository)
+- updated baseline scenario inputs for 2025-2060 (5-year increments) and select outputs (larger outputs not included in the repository)
+- alternative test scenario inputs and select outputs (larger outputs not included in the repository)
 
 # Release versions
 Release versions document the changes to the model during development and calibration
 - Working version in R v4, with C++ PMG, uncalibrated: https://github.com/CMAP-REPOS/cmap_freight_model/releases/tag/v0.1
 - Updated Working version in R v4, with C++ PMG, TAZ (as opposed to Mesozone) implementation of firm synthesis, support for calibration, but uncalibrated: https://github.com/CMAP-REPOS/cmap_freight_model/releases/tag/v0.2
 - Updated working version in R v4, with firm synthesis consistent with CMAP CSVM firm synthesis (later sections of model as v0.2): https://github.com/CMAP-REPOS/cmap_freight_model/releases/tag/v0.3.1
+- (New release tag and link to be added here)
 
