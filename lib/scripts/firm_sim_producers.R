@@ -1,18 +1,20 @@
 # Create producers/suppliers database
-firm_synthesis_producers <- function(io, fromwhl, FirmsDomestic, FirmsForeign, unitcost, EstSizeCategories){
+firm_synthesis_producers <- function(io, fromwhl_make_use, FirmsDomestic, FirmsForeign, unitcost, EstSizeCategories){
 
   # All agents that produce some SCTG commodity become potential producers
   # Domestic Producers
-  producers.domestic <- FirmsDomestic[Commodity_SCTG > 0 & substr(Industry_NAICS6_Make, 1, 2) != "42",]
+  producers.domestic <- FirmsDomestic[Commodity_SCTG > 0 & EmpCatName != 42,]
 
   # Domestic Wholesalers
-  producers.wholesalers <- FirmsDomestic[substr(Industry_NAICS6_Make, 1, 2) == "42",]
+  producers.wholesalers <- FirmsDomestic[EmpCatName == 42,]
 
-  # Foreigh Producers
+  # Foreign Producers
   producers.foreign <- FirmsForeign[FirmType == "ForeignProducer"]
-
+  setnames(producers.foreign, "ProVal", "ProdVal")
+  
   # Summarize wholesalers capacity according to the from wholesale requirements calculated above
-  whlval <- fromwhl[,.(ProVal = sum(ProValWhl)), by = .(Industry_NAICS6_Make = NAICS_whl)]
+  whlval <- fromwhl_make_use[!is.na(ProValWhl),.(ProVal = sum(ProValWhl)), 
+                             by = .(Industry_NAICS6_Make = NAICS_Whl)]
 
   # Add on the employment by industry
   whlval[producers.wholesalers[, .(Emp = sum(Emp)), by = Industry_NAICS6_Make],
@@ -27,19 +29,19 @@ firm_synthesis_producers <- function(io, fromwhl, FirmsDomestic, FirmsForeign, u
               ValEmp := i.ValEmp,
               on = "Industry_NAICS6_Make"]
 
-  # Poduction value for each wholesale establishment
+  # Production value for each wholesale establishment
   producers.wholesalers[, ProdVal := Emp * ValEmp]
 
   # Domestic producers production value
-  prodval <- merge(io[, .(ProVal = sum(ProVal)), by = Industry_NAICS6_Make],
+  prodval <- merge(io[, .(ProVal = sum(DomProdValNoWhl)), 
+                      by = Industry_NAICS6_Make],
                    producers.domestic[, .(Emp = sum(Emp)), by = Industry_NAICS6_Make],
                    by = "Industry_NAICS6_Make",
                    all = TRUE)
 
   # If there are Industries with no production value (i.e., no production in IO table):
   prodval[is.na(ProVal), ProVal := 0]
-  fwrite(prodval[ProVal == 0], file = file.path(SCENARIO_OUTPUT_PATH, "Producers_ZeroProVal.csv"))
-
+  
   # Production value per employee (in Million of Dollars)
   prodval[, ValEmp := ProVal / Emp]
 
@@ -56,14 +58,8 @@ firm_synthesis_producers <- function(io, fromwhl, FirmsDomestic, FirmsForeign, u
            ValEmp := i.ValEmp,
            on ="Industry_NAICS6_Make"]
 
-  # Remove any missing/zero value industries
-  producers.foreign[is.na(ValEmp), ValEmp := 0]
-
-  fwrite(producers.foreign[ValEmp == 0, .(ProdVal = sum(ProdVal), Countries = .N),
-                           by = .(FirmType, Industry_NAICS6_Make, Commodity_SCTG)],
-         file = file.path(SCENARIO_OUTPUT_PATH, "Producers_Foreign_ZeroValEmp.csv"))
-
-  producers.foreign <- producers.foreign[ValEmp != 0]
+  # For any missing industries (in foreign, not in domestic), add an average value
+  producers.foreign[is.na(ValEmp), ValEmp := mean(producers.domestic$ValEmp)]
 
   # Update ValEmp using foreign producer adjustment
   # same adjustment applied to unitcost, so assumption is that quantity per employee is the same as domestic production
@@ -81,7 +77,7 @@ firm_synthesis_producers <- function(io, fromwhl, FirmsDomestic, FirmsForeign, u
   # Update unit cost using foreign producer adjustment
   producers.foreign[, UnitCost := UnitCost * BASE_FOREIGN_PROD_COST_FACTOR]
 
-  # Prduction capacity (ProdVal was in $M)
+  # Production capacity (ProdVal was in $M)
   producers.foreign[, ProdCap := ProdVal * 1000000 / UnitCost]
 
   # Enumerate large foreign producers into multiple firms (threshold reduced)
@@ -99,6 +95,7 @@ firm_synthesis_producers <- function(io, fromwhl, FirmsDomestic, FirmsForeign, u
   producers.foreign[, Mesozone := CBPZONE + 150L]
   producers.foreign[, TAZ := as.numeric(NA)]
   producers.foreign[, BusID := max(FirmsDomestic$BusID) + .I]
+  producers.foreign[, modelregion := 3]
 
   # Add Output commodity
   producers.foreign[, OutputCommodity := Industry_NAICS6_Make]
@@ -129,37 +126,34 @@ firm_synthesis_producers <- function(io, fromwhl, FirmsDomestic, FirmsForeign, u
   # (wholesale NAICS are one to many NAICS commodities)
   # Each wholesale firm is identified with a specific NAICS and SCTG
   # Need probabilities for the match with NAICS commodity
-  whlnaics <- fromwhl[, .(ProValWhl = sum(ProValWhl)),
-                      by = .(Industry_NAICS6_Make, SCTG, NAICS = NAICS_whl)]
+  whlnaics <- fromwhl_make_use[!is.na(ProValWhl), .(ProValWhl = sum(ProValWhl)),
+                      keyby = .(Commodity_SCTG, NAICS_Whl, Industry_NAICS6_Make)]
 
-  whlnaics[, ProbProValWhl := ProValWhl / sum(ProValWhl), by = .(SCTG, NAICS)]
+  whlnaics[, ProbProValWhl := ProValWhl / sum(ProValWhl), 
+           by = .(Commodity_SCTG, NAICS_Whl)]
 
-  setkey(whlnaics, NAICS, SCTG)
+  whlnaics[, CumProValWhl := cumsum(ProbProValWhl), 
+           by = .(Commodity_SCTG, NAICS_Whl)]
 
-  whlnaics[, CumProValWhl := cumsum(ProbProValWhl), by = .(SCTG, NAICS)]
+  whlnaicscombs <- unique(whlnaics[, .(Commodity_SCTG, NAICS_Whl)])
 
-  whlnaicscombs <- unique(whlnaics[, .(NAICS, SCTG)])
-
+  set.seed(BASE_SEED_VALUE)
+  
   producers.wholesalers[, temprand := runif(.N)]
 
   for(i in 1:nrow(whlnaicscombs)){
 
-    whlnaicsi <- whlnaics[NAICS == whlnaicscombs$NAICS[i] & SCTG == whlnaicscombs$SCTG[i]]
+    whlnaicsi <- whlnaics[NAICS_Whl == whlnaicscombs$NAICS_Whl[i] 
+                          & Commodity_SCTG == whlnaicscombs$Commodity_SCTG[i]]
 
-    producers.wholesalers[Industry_NAICS6_Make == whlnaicscombs$NAICS[i] & Commodity_SCTG == whlnaicscombs$SCTG[i],
+    producers.wholesalers[Industry_NAICS6_Make == whlnaicscombs$NAICS_Whl[i] 
+                          & Commodity_SCTG == whlnaicscombs$Commodity_SCTG[i],
                 OutputCommodity := whlnaicsi$Industry_NAICS6_Make[1 + findInterval(temprand, whlnaicsi$CumProValWhl)]]
 
   }
 
   producers.wholesalers[, temprand := NULL]
 
-
-  fwrite(producers.wholesalers[is.na(OutputCommodity),
-                               .(ProdCap = sum(ProdCap), Firms = .N),
-                               by = .(Industry_NAICS6_Make, Commodity_SCTG)],
-         file = file.path(SCENARIO_OUTPUT_PATH, "Producers_Wholesalers_NoOutputCommodity.csv"))
-
-  #TODO - clean up correspondences to avoid no matches here
   producers.wholesalers <- producers.wholesalers[!is.na(OutputCommodity)]
 
   # combine domestic producers, foreign producers, and wholesalers
@@ -170,15 +164,20 @@ firm_synthesis_producers <- function(io, fromwhl, FirmsDomestic, FirmsForeign, u
                      use.names = TRUE,
                      fill = TRUE)
   
+  # Copy prior to further processing for review
+  producers_all <- copy(producers)
+  
   # To simplify simulation, remove very small producers by bucket rounding the ProdCap and removing any resulting 0 tons producers
   # Round by Industry_NAICS6_Make, Commodity_SCTG, and OutputCommodity to maintain commodity/NAICS distribution 
   # Round by FAF zone so that spatial distribution by FAF zone is maintained
   # Remove zero value producers rounding
-  producers[, ProdCap := as.numeric(bucketRound(ProdCap)), by = .(Industry_NAICS6_Make, Commodity_SCTG, OutputCommodity, FAFZONE)]
+  producers[, ProdCap := as.numeric(bucketRound(ProdCap)), 
+            by = .(Industry_NAICS6_Make, Commodity_SCTG, OutputCommodity, FAFZONE)]
   producers <- producers[ProdCap > 0.5]
   
   # Prepare for Writing out a producers file for each NAICS, with each firm represented by:
-  # SellerID (BusID)  Zone (Mesozone)	NAICS (NAICS6_Make)	Size (Emp)	OutputCommodity (SCTG_Make)	OutputCapacityTons (ProdCap)	NonTransportUnitCost (UnitCost)
+  # SellerID (BusID)  Zone (Mesozone)	NAICS (NAICS6_Make)	Size (Emp)	OutputCommodity (SCTG_Make)	
+  # OutputCapacityTons (ProdCap)	NonTransportUnitCost (UnitCost)
   producers[, c("CBPZONE", "esizecat", "ProdVal", "ValEmp") := NULL]
 
   setnames(producers,
@@ -188,6 +187,7 @@ firm_synthesis_producers <- function(io, fromwhl, FirmsDomestic, FirmsForeign, u
   setkey(producers, OutputCommodity)
 
   # Return the producers table
-  return(producers)
+  return(list(producers = producers,
+              producers_all = producers_all))
 
 }
