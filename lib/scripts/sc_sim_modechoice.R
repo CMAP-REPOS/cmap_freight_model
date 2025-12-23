@@ -1,139 +1,115 @@
-sc_sim_modechoice <- function(naics_set, TAZGCD, ModeChoiceParameters, sctg, c_path_mode, mode_availability){
+sc_sim_modechoice <- function(naics_set, TAZGCD, ShipmentRoutesCosts, ModeChoiceParameters, sctg, c_path_mode, mode_availability){
   
-  # Loop over markets -- combinations of naics code and SCTG code
-  # Prepare future processors
-  # Only allocate as many workers as we need (including one for future itself) or to the specified maximum
-  plan(multiprocess, workers = USER_MODE_CHOICE_CORES)
+  t0 <- Sys.time()
   
-  marketInProcess <- list()
+  # Expanded set of market-group combinations
+  naics_set_expanded <- data.table(NAICS = rep(naics_set$NAICS, naics_set$groups),
+                                   SCTG = rep(naics_set$SCTG, naics_set$groups),
+                                   Market = rep(naics_set$Market, naics_set$groups),
+                                   Group = unlist(lapply(naics_set$groups, seq, from=1)))
+  naics_set_expanded[, Market_Group := paste(Market, Group, sep = "_")]
   
-  # Create a log file for this step
-  log_file_path <- file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_modechoice.txt")
-  file.create(log_file_path)
- 
-  # Apply the mode choice model for each market
-  for(market_number in 1:nrow(naics_set)){
-    market <- as.character(naics_set$Market[market_number])
-    groups <- naics_set$groups[market_number]
+  if(USER_MODE_CHOICE_CORES > 1){
+    require(parallel)
     
-    # Create place to accumulate group results
-    marketInProcess[[paste0("market-", market)]] <- list()
-    write(print(paste0(Sys.time(), ": Starting Market: ", market, " with ", groups, " groups")), file = log_file_path, append = TRUE)
+    clust <- makeCluster(USER_MODE_CHOICE_CORES)
     
-    # Start creating input files for pmg for each group in the naics
-    for(g in 1:groups){
-      
-      taskName <- paste0( "Apply_Mode_Choice_market-", market, "-group-", g, "-of-", groups)
-      write(print(paste0(Sys.time(), ": Submitting task '", taskName, "' to join ", getNumberOfRunningTasks(), " currently running tasks")), file = log_file_path, append = TRUE)
-      
-      startAsyncTask(
-        taskName, # Name of the task running
-        future({ # Start the future processor
-          # Write message to the console
-          msg <- write(print(paste0(Sys.time(), " Applying Mode Choice Model for: ", market, ",  Group: ", g)), file = log_file_path, append = TRUE)
-          
-          # Run apply_modechoice function
-          output <- capture.output(apply_modechoice(market, g, TAZGCD, ModeChoiceParameters, 
-                                                    sctg, c_path_mode, mode_availability))
-          return(output) #no need to return anything to future task handler
-        }),
-        callback = function(asyncResults) {
-          # asyncResults is: list(asyncTaskName,
-          #                        taskResult,
-          #                        startTime,
-          #                        endTime,
-          #                        elapsedTime,
-          #                        caughtError,
-          #                        caughtWarning)
-          
-          #check that cost files was create
-          taskName <- asyncResults[["asyncTaskName"]]
-          taskInfo <- data.table::data.table(namedCapture::str_match_named(taskName, "^.*market[-](?P<taskMarket>[^-]+)-group-(?P<taskGroup>[^-]+)-of-(?P<taskGroups>.*)$"))[1,]
-          taskResult <- asyncResults[["taskResult"]]
-          write(print(taskResult), file = log_file_path, append = TRUE)
-          marketKey <- paste0("market-", taskInfo$taskMarket)
-          groupoutputs <- marketInProcess[[marketKey]]
-          if (is.null(groupoutputs)) {
-            stop(
-              paste0(
-                "for taskInfo$taskMarket ",
-                taskInfo$taskMarket,
-                " marketInProcess[[taskInfo$taskMarket]] (groupoutputs) is NULL! "
-              )
-            )
-          }
-          
-          groupKey <- paste0("group-", taskInfo$taskGroup)
-          groupoutputs[[groupKey]] <- paste0(Sys.time(), ": Finished!")
-          
-          #don't understand why this is necessary but apparently have to re-store list
-          marketInProcess[[marketKey]] <<- groupoutputs
-          
-          write(print(paste0(Sys.time(),": Finished ",taskName,
-                             ", Elapsed time since submitted: ",
-                             asyncResults[["elapsedTime"]],
-                             " # of group results so far for this market=",
-                             length(groupoutputs))),
-                file = log_file_path,append = TRUE)
-          
-          if (length(groupoutputs) == taskInfo$taskGroups) {
-            #delete market from tracked outputs
-            marketInProcess[[marketKey]] <<- NULL
-            write(print(paste0(Sys.time(),": Completed Processing Outputs of all ",
-                               taskInfo$taskGroups," groups for market ",
-                               taskInfo$taskMarket,". Remaining marketInProcess=",
-                               paste0(collapse = ", ", names(marketInProcess)))),
-                  file = log_file_path, append = TRUE)
-          } #end if all groups in naic are finished
-        },
-        debug = FALSE
-      ) #end call to startAsyncTask
-      processRunningTasks(wait = FALSE, debug = TRUE, maximumTasksToResolve = 1)
-    }
-  } # Finished making inputs to the PMG
-
-  # Wait until all tasks are finished
-  processRunningTasks(wait = TRUE, debug = TRUE)
-  
-  if (length(marketInProcess) != 0) {
-    stop(paste(
-      "At end of sc_sim_modechoice there were still some unfinished markets! Unfinished: ", 
-      paste0(collapse = ", ", names(marketsInProcess))))
+    clusterCall(clust, 
+                fun = function(packages, lib) lapply(X = as.list(packages), FUN = library, character.only = TRUE, lib.loc = lib),
+                packages = SYSTEM_PKGS, lib = SYSTEM_PKGS_PATH)
+    
+    clusterExport(clust, varlist = getGlobalVars(), envir = .GlobalEnv)
+    
+    clusterExport(clust, 
+                  c("apply_modechoice",
+                    "minLogisticsCost",
+                    "minLogisticsCostSctgPaths",
+                    "calcLogisticsCost",
+                    "shipsize",
+                    "ShipmentRoutesCostsList",
+                    "mesozone_gcd"), 
+                  envir = environment())
+    
+    naicslist <- parLapplyLB(clust, 
+                             1:nrow(naics_set_expanded), 
+                             function(x){
+                               apply_modechoice(market = as.character(naics_set_expanded$Market[x]), 
+                                                g = naics_set_expanded$Group[x],
+                                                TAZGCD, ShipmentRoutesCosts, ModeChoiceParameters, 
+                                                sctg, c_path_mode, mode_availability)
+                               
+                             },
+                             chunk.size = 1)
+    stopCluster(clust)
+    
+  } else {
+    
+    naicslist <- lapply(1:nrow(naics_set_expanded), 
+                        function(x){
+                          
+                          print(paste(x,
+                                      as.character(naics_set_expanded$Market[x]),
+                                      naics_set_expanded$Group[x]))
+                          
+                          apply_modechoice(market = as.character(naics_set_expanded$Market[x]), 
+                                           g= naics_set_expanded$Group[x],
+                                           TAZGCD, ShipmentRoutesCosts, ModeChoiceParameters, 
+                                           sctg, c_path_mode, mode_availability)
+                          
+                        })
+    
   }
   
-  # Stop the future processors
-  future:::ClusterRegistry("stop")
+  # Check that the complete set of naics groups were processed
+  naics_completed <- unlist(naicslist)
+  fwrite(data.table(Market_num = 1:length(naics_completed),
+                    Market = naics_completed),
+         file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_modechoice.csv"))
+  naics_missing <- naics_set_expanded[!Market_Group %in% naics_completed]$Market_Group
+  if(length(naics_missing) > 0) cat("Market-Group combinations missing from market simulation in sc_sim_modechoice: ", naics_missing)
+  
+  t1 <- Sys.time()
+  
+  cat(
+    "\n", "Time taken: ",
+    format(round(t1 - t0, 2), units = "mins")
+  )
   
   return(naics_set)
+  
 }
 
-apply_modechoice <- function(market, g, TAZGCD, ModeChoiceParameters, sctg, c_path_mode, mode_availability){
+apply_modechoice <- function(market, g, TAZGCD, ShipmentRoutesCosts, ModeChoiceParameters, sctg, c_path_mode, mode_availability){
   
-  # Load the workspace for this market and group
-  load(file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, ".Rdata")))
+  # Load the files for this market and group
+  conscg <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_consc.fst")),
+                     as.data.table = TRUE)
+  prodcg <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_prodc.fst")),
+                     as.data.table = TRUE)
   
-  # load the processed skims
-  ShipmentRoutesCosts <- fread(file.path(SCENARIO_OUTPUT_PATH, "ShipmentRoutesCosts.csv"))
+  pc <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_pc.fst")),
+                 as.data.table = TRUE)
   
   # Apply the mode choice model
   print(paste(Sys.time(), "Applying mode choice model to", market, "group", g))
   
   # Add fields to pc 
-  pc_ss <- copy(pc)
+  pc_ss <- pc[,.(SellerID, Seller.NAICS, OutputCapacityTons, BuyerID, Buyer.NAICS, PurchaseAmountTons, distchannel)]
   pc_ss[prodcg, 
         c("Production_zone", "Commodity_SCTG", "Seller.Size") := 
-          .(i.Production_zone, i.Commodity_SCTG, i.Seller.Size), 
+          .(i.Zone, i.Commodity_SCTG, i.Size), 
         on = "SellerID"]
   
   pc_ss[conscg, 
         c("Consumption_zone", "ConVal", "Buyer.Size") := 
-          .(i.Consumption_zone, i.ConVal, i.Buyer.Size), 
+          .(i.Zone, i.ConVal, i.Size), 
         on = "BuyerID"]
   
   # Add zone to zone distances
   pc_ss[TAZGCD[, .(Production_zone, Consumption_zone, GCD)], 
         Distance := i.GCD,
         on = c("Production_zone", "Consumption_zone")]
+  pc_ss[is.na(Distance), Distance := mean(TAZGCD$GCD, na.rm = TRUE)]
   
   pc_ss[, lssbd := 0]
   pc_ss[Seller.Size > 5 & Buyer.Size < 3 & Distance > 300, lssbd := 1]
@@ -148,16 +124,16 @@ apply_modechoice <- function(market, g, TAZGCD, ModeChoiceParameters, sctg, c_pa
                  allow.cartesian = TRUE)[, k := NULL]
   
   # call the mode choice functions
-  pc <- minLogisticsCost(pc_ss, ShipmentRoutesCosts, sctg)
+  pc <- minLogisticsCost(pc_ss, ShipmentRoutesCosts, ModeChoiceParameters, sctg)
   
-  # Save the results
-  save(pc, prodcg, conscg, file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, ".Rdata")))
+  # Save pc
+  write_fst(pc, path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_pc.fst")))
   
-  return(paste("Completed apply_modechoice for market:", market, ", group:", g))
+  return(paste(market, g, sep = "_"))
 }
 
 # Functions to apply the mode choice model
-minLogisticsCost <- function(BuyerSupplierPairs, ShipmentRoutesCosts, sctg, modeChoiceConstants=NULL, runmode = 0){
+minLogisticsCost <- function(BuyerSupplierPairs, ShipmentRoutesCosts, ModeChoiceParameters, sctg, modeChoiceConstants=NULL, runmode = 0){
   
   pass <- 0			### counter for number of passes through function
   
@@ -173,16 +149,18 @@ minLogisticsCost <- function(BuyerSupplierPairs, ShipmentRoutesCosts, sctg, mode
       if(!is.null(modeChoiceConstants) & nrow(DirectPairs) > 0){
         DirectPairs <- minLogisticsCostSctgPaths(DirectPairs,
                                                  iSCTG,
-                                                 c(3,13,31,46,55:57),
+                                                 paths = c(3,13,31,46,55:57),
                                                  sctg,
-                                                 ShipmentRoutesCosts, 
+                                                 ShipmentRoutesCosts,
+                                                 ModeChoiceParameters,
                                                  modeChoiceConstants = modeChoiceConstants)
       } else if(nrow(DirectPairs) > 0) {
         DirectPairs <- minLogisticsCostSctgPaths(DirectPairs,
                                                  iSCTG,
                                                  c(3,13,31,46,55:57),
                                                  sctg,
-                                                 ShipmentRoutesCosts, 
+                                                 ShipmentRoutesCosts,
+                                                 ModeChoiceParameters,
                                                  modeChoiceConstants = NULL)
       } else {
         DirectPairs <- DirectPairs[BuyerID < 0]
@@ -207,14 +185,16 @@ minLogisticsCost <- function(BuyerSupplierPairs, ShipmentRoutesCosts, sctg, mode
                                                    iSCTG,
                                                    c(1:2,4:12,14:30,32:45,47:54,55:57),
                                                    sctg,
-                                                   ShipmentRoutesCosts, 
+                                                   ShipmentRoutesCosts,
+                                                   ModeChoiceParameters,
                                                    modeChoiceConstants = modeChoiceConstants)
       } else if (nrow(IndirectPairs) > 0) {
         IndirectPairs <- minLogisticsCostSctgPaths(IndirectPairs,
                                                    iSCTG,
                                                    c(1:2,4:12,14:30,32:45,47:54,55:57),
                                                    sctg,
-                                                   ShipmentRoutesCosts, 
+                                                   ShipmentRoutesCosts,
+                                                   ModeChoiceParameters,
                                                    modeChoiceConstants = NULL)
       } else {
         IndirectPairs <- IndirectPairs[BuyerID < 0]
@@ -240,14 +220,16 @@ minLogisticsCost <- function(BuyerSupplierPairs, ShipmentRoutesCosts, sctg, mode
                                                            iSCTG,
                                                            c(1:2,4:12,14:30,32:45,55:57),
                                                            sctg,
-                                                           ShipmentRoutesCosts, 
+                                                           ShipmentRoutesCosts,
+                                                           ModeChoiceParameters,
                                                            modeChoiceConstants = NULL)			## include inland water
       } else if(nrow(DomesticShipmentPairs) > 0) {
         DomesticShipmentPairs <- minLogisticsCostSctgPaths(DomesticShipmentPairs,
                                                            iSCTG,
                                                            c(1:2,4:12,14:30,32:45,55:57),
                                                            sctg,
-                                                           ShipmentRoutesCosts, 
+                                                           ShipmentRoutesCosts,
+                                                           ModeChoiceParameters,
                                                            modeChoiceConstants = modeChoiceConstants)
       } else {
         DomesticShipmentPairs <- DomesticShipmentPairs[BuyerID < 0]
@@ -264,7 +246,7 @@ minLogisticsCost <- function(BuyerSupplierPairs, ShipmentRoutesCosts, sctg, mode
 }
 
 minLogisticsCostSctgPaths <- function(BuyerSupplierPairs, iSCTG, paths, sctg,
-                                      ShipmentRoutesCosts, modeChoiceConstants = NULL){
+                                      ShipmentRoutesCosts, ModeChoiceParameters, modeChoiceConstants = NULL){
   
   s <- sctg[iSCTG]
   
@@ -299,6 +281,7 @@ minLogisticsCostSctgPaths <- function(BuyerSupplierPairs, iSCTG, paths, sctg,
   
   BuyerSupplierPairs[avail == TRUE, 
                      minc := calcLogisticsCost(.SD[,.(PurchaseAmountTons, weight, ConVal, lssbd, time, cost)], 
+                                               ModeChoiceParameters,
                                                s, 
                                                unique(path)), 
                      by = path] 
@@ -330,7 +313,7 @@ minLogisticsCostSctgPaths <- function(BuyerSupplierPairs, iSCTG, paths, sctg,
   
 } #minLogisticsCostSctgPaths
 
-calcLogisticsCost <- function(dfspi,s,path){
+calcLogisticsCost <- function(dfspi,ModeChoiceParameters,s,path){
   set.seed(151)
   setnames(dfspi,c("pounds","weight","value","lssbd","time","cost"))
   
