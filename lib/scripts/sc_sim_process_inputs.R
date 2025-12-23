@@ -8,8 +8,6 @@ sc_sim_process_inputs <- function(envir) {
                      sctg                       = file.path(SYSTEM_DATA_PATH, "corresp_sctg_category.csv"), #correspondence between SCTG and descriptions
                      mode_availability          = file.path(SYSTEM_DATA_PATH, "data_modepath_availability.csv"), # Modes available by SCTG and ODSegment
                      mode_description           = file.path(SYSTEM_DATA_PATH, "data_mode_description.csv"), # Mode desciption
-                     pc_domestic_targets        = file.path(SYSTEM_DATA_PATH, "domestictargets.csv"),
-                     pc_international_targets   = file.path(SYSTEM_DATA_PATH, "foreigndomestictargets.csv"),
                      FAF_DISTANCE               = file.path(SYSTEM_DATA_PATH, "data_faf_distance.csv"),
                      FAF_TON_DIST               = file.path(SYSTEM_DATA_PATH, "data_faf_ton_distribution.csv"),
                      FAF_TON_TRADETYPE          = file.path(SYSTEM_DATA_PATH, "data_faf_ton_tradetype.csv"),
@@ -17,7 +15,6 @@ sc_sim_process_inputs <- function(envir) {
                      shipsize                   = file.path(SYSTEM_DATA_PATH, "data_commodity_shipmentsizes.csv"),
                      skims_airports             = file.path(SYSTEM_DATA_PATH, "data_modepath_airports.csv"),
                      skims_ports                = file.path(SYSTEM_DATA_PATH, "data_modepath_ports.csv"),
-                     Supplier_Selection_Distribution = file.path(SYSTEM_DATA_PATH, "data_faf_ton_distribution.csv"),
                      distchannel_calibration    = file.path(SYSTEM_DATA_PATH, "model_distchannel_calibration.csv"),
                      distchannel_food           = file.path(SYSTEM_DATA_PATH, "model_distchannel_food.csv"),
                      distchannel_food_cal       = file.path(SYSTEM_DATA_PATH, "model_distchannel_food_cal.csv"),
@@ -46,11 +43,11 @@ sc_sim_process_inputs <- function(envir) {
   
   envir[["distchan_calcats"]] <- data.table(CHOICE=c("0","1","2+","2+"),CHID=1:4)
   
-  envir[["FAF_DISTANCE"]][,Distance_Bin:=findInterval(distance,seq(0,150000,100))]
+  envir[["FAF_DISTANCE"]][, Distance_Bin := findInterval(distance,seq(0,150000,100))]
   setkey(envir[["FAF_DISTANCE"]],oFAFZONE,dFAFZONE)
   
   ### Load and process scenario input files
-  scenario.files <- c(skims                      = file.path(SCENARIO_INPUT_PATH, "data_modepath_skims.csv"))                                      
+  scenario.files <- c(skims = file.path(SCENARIO_INPUT_PATH, "data_modepath_skims.csv"))                                      
   
   loadInputs(files = scenario.files, envir = envir)
   

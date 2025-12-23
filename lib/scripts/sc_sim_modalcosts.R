@@ -1,19 +1,20 @@
-
-#Calculates modal costs and times for the shipment mode and transfer choice model
+# Calculates modal costs and times for the shipment mode and transfer choice model
 sc_sim_modalcosts <- function(skims, ModeChoiceParameters, mode_description, mode_availability, sctg) {
   
   # Update progress log
   progressUpdate(subtaskprogress = 0, subtask = "Calculate Modal Costs", prop = 1/6, dir = SCENARIO_LOG_PATH)
   
-  ### Convert parameters from to individual objects for use in formulas
+  ### Convert parameters to individual objects for use in formulas
   
   for(i in 1:nrow(ModeChoiceParameters)) assign(ModeChoiceParameters$Variable[i], value = ModeChoiceParameters$Value[i])
   
   # Update progress log
   progressUpdate(subtaskprogress = 0.20, subtask = "Calculate Modal Costs", prop = 1/6, dir = SCENARIO_LOG_PATH)
   
-  ### Process skims into format used in mode choice model and write to file for faster loading on seperate processes
+  ### Process skims into format used in mode choice model and write to file for faster loading on separate processes
   
+  # Label the origin and destination as production and consumption zones
+  # Note that these are mesozones and not TAZs
   setnames(skims, c("Origin", "Destination"), c("Production_zone", "Consumption_zone"))
   
   if(!identical(nModes <- sum(grepl("time",colnames(skims))),
