@@ -5,4 +5,6 @@
 
 # Folders
 lib/pkgs/library/*
-scenarios/base/outputs
+scenarios/*/outputs
+scenarios/*/inputs/*_skims.csv
+scenarios/*/inputs/*_miles.csv
