@@ -1,137 +1,87 @@
 sc_sim_costs <- function(naics_set){
   
-  # Loop over markets -- combinations of naics code and SCTG code
-  # Prepare future processors
-  # only allocate as many workers as we need (including one for future itself) or to the specified maximum
-  plan(multiprocess, workers = USER_COST_CORES)
+  t0 <- Sys.time()
   
-  marketInProcess <- list()
+  # Expanded set of market-group combinations
+  naics_set_expanded <- data.table(NAICS = rep(naics_set$NAICS, naics_set$groups),
+                                   SCTG = rep(naics_set$SCTG, naics_set$groups),
+                                   Market = rep(naics_set$Market, naics_set$groups),
+                                   Group = unlist(lapply(naics_set$groups, seq, from=1)))
+  naics_set_expanded[, Market_Group := paste(Market, Group, sep = "_")]
   
-  # Create a log file for this step
-  log_file_path <- file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_costs.txt")
-  file.create(log_file_path)
-  
-  # Format and write out the costs files for each markets
-  for(market_number in 1:nrow(naics_set)){
-    market <- as.character(naics_set$Market[market_number])
-    groups <- naics_set$groups[market_number]
+  if(USER_COST_CORES > 1){
+    require(parallel)
     
-    # Create place to accumulate group results
-    marketInProcess[[paste0("market-", market)]] <- list()
-    write(print(paste0(Sys.time(), ": Starting Market: ", market, " with ", groups, " groups")), file = log_file_path, append = TRUE)
+    clust <- makeCluster(USER_COST_CORES)
     
-    # Start creating costs files for pmg for each group in the market
-    for(g in 1:groups){
-      
-      taskName <- paste0( "Create_Costs_market-", market, "-group-", g, "-of-", groups)
-      write(print(paste0(Sys.time(), ": Submitting task '", taskName, "' to join ", getNumberOfRunningTasks(), " currently running tasks")), file = log_file_path, append = TRUE)
-      
-      startAsyncTask(
-        taskName, # Name of the task running
-        future({ # Start the future processor
-          # Write message to the console
-          msg <- write(print(paste0(Sys.time(), " Creating Costs Inputs File for: ", market, ",  Group: ", g)), file = log_file_path, append = TRUE)
-          
-          # Run create_costs function
-          output <- capture.output(create_costs(market, g))
-          return(output) #no need to return anything to future task handler
-        }),
-        callback = function(asyncResults) {
-          # asyncResults is: list(asyncTaskName,
-          #                        taskResult,
-          #                        startTime,
-          #                        endTime,
-          #                        elapsedTime,
-          #                        caughtError,
-          #                        caughtWarning)
-          
-          #check that cost files was create
-          taskName <- asyncResults[["asyncTaskName"]]
-          taskInfo <- data.table::data.table(namedCapture::str_match_named(taskName, "^.*market[-](?P<taskMarket>[^-]+)-group-(?P<taskGroup>[^-]+)-of-(?P<taskGroups>.*)$"))[1,]
-          taskResult <- asyncResults[["taskResult"]]
-          write(print(taskResult), file = log_file_path, append = TRUE)
-          marketKey <- paste0("market-", taskInfo$taskMarket)
-          groupoutputs <- marketInProcess[[marketKey]]
-          if (is.null(groupoutputs)) {
-            stop(
-              paste0(
-                "for taskInfo$taskMarket ",
-                taskInfo$taskMarket,
-                " marketInProcess[[taskInfo$taskMarket]] (groupoutputs) is NULL! "
-              )
-            )
-          }
-          
-          groupKey <- paste0("group-", taskInfo$taskGroup)
-          groupoutputs[[groupKey]] <- paste0(Sys.time(), ": Finished!")
-          
-          #don't understand why this is necessary but apparently have to re-store list
-          marketInProcess[[marketKey]] <<- groupoutputs
-          
-          costs_file_path <- file.path(SCENARIO_OUTPUT_PATH,
-                                       paste0(taskInfo$taskMarket,"_g",
-                                              taskInfo$taskGroup,".costs.csv"))
-          cost_file_exists <- file.exists(costs_file_path)
-          
-          write(print(paste0(Sys.time(),": Finished ",taskName,
-                             ", Elapsed time since submitted: ",
-                             asyncResults[["elapsedTime"]],
-                             ", cost_file_exists: ",cost_file_exists,
-                             " # of group results so far for this naics=",
-                             length(groupoutputs))),
-                file = log_file_path,append = TRUE)
-          
-          if (!cost_file_exists) {
-            msg <- paste("***ERROR*** Did not find expected costs file '",
-                         costs_file_path,"'.")
-            
-            write(print(msg), file = log_file_path, append = TRUE)
-            stop(msg)
-          }
-          if (length(groupoutputs) == taskInfo$taskGroups) {
-            #delete market from tracked outputs
-            marketInProcess[[marketKey]] <<- NULL
-            write(print(paste0(Sys.time(),": Completed Processing Outputs of all ",
-                               taskInfo$taskGroups," groups for market ",
-                               taskInfo$taskMarket,". Remaining marketInProcess=",
-                               paste0(collapse = ", ", names(marketInProcess)))), 
-                  file = log_file_path, append = TRUE)
-          } #end if all groups in naic are finished
-        },
-        debug = FALSE
-      ) #end call to startAsyncTask
-      processRunningTasks(wait = FALSE, debug = TRUE, maximumTasksToResolve = 1)
-    }
-  } # Finished making inputs to the PMG
-  
-  # Wait until all tasks are finished
-  processRunningTasks(wait = TRUE, debug = TRUE)
-  
-  if (length(marketInProcess) != 0) {
-    stop(paste(
-      "At end of sc_sim_costs there were still some unfinished markets! Unfinished: ", 
-      paste0(collapse = ", ", names(marketsInProcess))))
+    clusterCall(clust, 
+                fun = function(packages, lib) lapply(X = as.list(packages), FUN = library, character.only = TRUE, lib.loc = lib),
+                packages = SYSTEM_PKGS, lib = SYSTEM_PKGS_PATH)
+    
+    clusterExport(clust, varlist = getGlobalVars(), envir = .GlobalEnv)
+    
+    clusterExport(clust, 
+                  c("create_costs"), 
+                  envir = environment())
+    
+    naicslist <- parLapplyLB(clust, 
+                             1:nrow(naics_set_expanded), 
+                             function(x){
+                               create_costs(market= as.character(naics_set_expanded$Market[x]),
+                                            g = naics_set_expanded$Group[x])
+                             },
+                             chunk.size = 1)
+    stopCluster(clust)
+    
+  } else {
+    
+    naicslist <- lapply(1:nrow(naics_set_expanded), 
+                        function(x){
+                          
+                          print(paste(x,
+                                      as.character(naics_set_expanded$Market[x]),
+                                      naics_set_expanded$Group[x]))
+                          
+                          create_costs(market= as.character(naics_set_expanded$Market[x]),
+                                       g = naics_set_expanded$Group[x])
+                          
+                        })
+    
   }
   
-  # Stop the future processors
-  future:::ClusterRegistry("stop")
+  # Check that the complete set of naics groups were processed
+  naics_completed <- unlist(naicslist)
+  fwrite(data.table(Market_num = 1:length(naics_completed),
+                    Market = naics_completed),
+         file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_costs.csv"))
+  naics_missing <- naics_set_expanded[!Market_Group %in% naics_completed]$Market_Group
+  if(length(naics_missing) > 0) cat("Market-Group combinations missing from market simulation in sc_sim_costs: ", naics_missing)
+  
+  t1 <- Sys.time()
+  
+  cat(
+    "\n", "Time taken: ",
+    format(round(t1 - t0, 2), units = "mins")
+  )
   
   return(naics_set)
 }
 
 create_costs <- function(market, g){
   
-  # load the workspace for this market and group
-  load(file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, ".Rdata")))
+  # load the pc table for this market and group
+  pc <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_pc.fst")),
+                 as.data.table = TRUE)
   
   pc[, Attribute1_UnitCost := minc / PurchaseAmountTons]
   pc[, Attribute2_ShipTime := time / (60 * 24)] #Convert from minutes to days
   
-  save(pc, prodcg, conscg, file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, ".Rdata")))
+  # Save pc and write the costs.csv 
+  write_fst(pc, path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_pc.fst")))
   
   fwrite(pc[,.(sellerid = SellerID,	buyerid = BuyerID,	Attribute2_ShipTime,	cost,	Attribute1_UnitCost)],
          file = file.path(SCENARIO_OUTPUT_PATH,paste0(market, "_g", g, ".costs.csv")))
   
-  return(paste("Completed create_costs for market:", market, ", group:", g))
+  return(paste(market, g, sep = "_"))
 }
 
