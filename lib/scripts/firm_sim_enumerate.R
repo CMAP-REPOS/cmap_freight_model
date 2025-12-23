@@ -1,24 +1,7 @@
 
-#Enumerate firms and merge with correspondenses
+#Enumerate firms and merge with correspondences
 firm_synthesis_enumerate <- function(Establishments, EstSizeCategories, TAZEmployment, mzemp){
 
-  # Synthesize data for missing NAICS/county category 92
-  EmpCounty <- TAZEmployment[,.(Emp = sum(Employees.SE)), keyby = .(EmpCatName, CBPZONE)]
-  EmpCounty[Establishments[,.(Est = sum(est)), by = EmpCatName], Est := i.Est, on = c("EmpCatName")]
-  EmpCounty[is.na(Est), Est := 0]
-  EmpCountyPublic <- EmpCounty[EmpCatName == "92"]
-  EmpCountyPublic[EmpCounty[EmpCatName != "92", .(Emp = sum(Emp)), by = CBPZONE], EmpOther := i.Emp, on = "CBPZONE"]
-  EmpCountyPublic[, PctPublic := Emp/EmpOther]
-  
-  EstablishmentsMiss <- Establishments[, .(est = sum(est)), keyby = .(modelregion, CBPZONE, esizecat)]
-  EstablishmentsMiss[EmpCountyPublic, PctPublic := i.PctPublic, on = "CBPZONE"]
-  EstablishmentsMiss[, estPublic := est * PctPublic]
-  EstablishmentsMiss[, estPublic := bucketRound(estPublic)]
-  
-  Establishments <- rbind(Establishments,
-                          EstablishmentsMiss[, .(modelregion, CBPZONE, NAICS6 = 920000, 
-                                                 EmpCatName = "92", esizecat, est = estPublic)])
-  
   # Enumerates the agent businesses using the est variable.
   Firms <- Establishments[rep(seq_len(Establishments[, .N]), est),]
   setkey(Firms, modelregion, CBPZONE, NAICS6, EmpCatName, esizecat)
@@ -49,9 +32,9 @@ firm_synthesis_enumerate <- function(Establishments, EstSizeCategories, TAZEmplo
   FirmsMZ <- Firms[CBPZONE %in% BASE_FIPS_INTERNAL, .(CountyFIPS = CBPZONE, BusID, EmpCatName, Emp)]
   
   # Assign specific NAICS categories which would be used to locate businesses to tazs
-  FirmsMZ[EmpCatName %in% c("31","32","33"), EmpCatName := "3133"]
-  FirmsMZ[EmpCatName %in% c("44","45"), EmpCatName := "4445"]
-  FirmsMZ[EmpCatName %in% c("48","49"), EmpCatName := "4849"]
+  FirmsMZ[EmpCatName %in% 31:33, EmpCatName := 3133]
+  FirmsMZ[EmpCatName %in% 44:45, EmpCatName := 4445]
+  FirmsMZ[EmpCatName %in% 48:49, EmpCatName := 4849]
   
   # Convert the ranking table to long format
   mzemp <- melt.data.table(mzemp,
@@ -59,7 +42,7 @@ firm_synthesis_enumerate <- function(Establishments, EstSizeCategories, TAZEmplo
                            variable.name = "EmpCatName",
                            value.name = "EmpRank")
   
-  mzemp[, EmpCatName := sub("rank", "", as.character(EmpCatName))]
+  mzemp[, EmpCatName := as.integer(sub("rank", "", as.character(EmpCatName)))]
   
   # Merge the rankings dataset to the firms database based on county
   FirmsMZ <- merge(FirmsMZ,
@@ -70,12 +53,12 @@ firm_synthesis_enumerate <- function(Establishments, EstSizeCategories, TAZEmplo
   
   # Select candidate tazs based on the industry of the firm, firm size, and ranking of that particular industry in a Mesozone
   FirmsMZ[, candidate := 0L]
-  FirmsMZ[Emp > 5000 & EmpRank %in% c(9,10), candidate := 1L]
-  FirmsMZ[Emp > 2000 & Emp <= 5000 & EmpRank %in% c(7:10), candidate := 1L]
-  FirmsMZ[Emp > 500 & Emp <= 2000 & EmpRank %in% c(5:10), candidate := 1L]
-  FirmsMZ[Emp > 100 & Emp <= 500 & EmpRank %in% c(4:10), candidate := 1L]
-  FirmsMZ[Emp > 20 & Emp <= 100 & EmpRank %in% c(2:10), candidate := 1L]
-  FirmsMZ[Emp <= 20 & EmpRank %in% c(1:10), candidate := 1L]
+  FirmsMZ[Emp > 5000 & EmpRank %in% 9:10, candidate := 1L]
+  FirmsMZ[Emp > 2000 & Emp <= 5000 & EmpRank %in% 7:10, candidate := 1L]
+  FirmsMZ[Emp > 500 & Emp <= 2000 & EmpRank %in% 5:10, candidate := 1L]
+  FirmsMZ[Emp > 100 & Emp <= 500 & EmpRank %in% 4:10, candidate := 1L]
+  FirmsMZ[Emp > 20 & Emp <= 100 & EmpRank %in% 2:10, candidate := 1L]
+  FirmsMZ[Emp <= 20 & EmpRank %in% 1:10, candidate := 1L]
   
   # small number of businesses that did not get a candiate Mesozone -
   # allow those to have some candidates (small error is better than omitting the businesses)
