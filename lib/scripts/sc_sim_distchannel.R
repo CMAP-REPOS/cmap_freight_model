@@ -1,115 +1,93 @@
 sc_sim_distchannel <- function(naics_set, TAZGCD){
+ 
+  t0 <- Sys.time()
   
-  # Loop over markets -- combinations of naics code and SCTG code
-  # Prepare future processors
-  # only allocate as many workers as we need (including one for future itself) or to the specified maximum
-  plan(multiprocess, workers = USER_COST_CORES)
+  # Expanded set of market-group combinations
+  naics_set_expanded <- data.table(NAICS = rep(naics_set$NAICS, naics_set$groups),
+                                   SCTG = rep(naics_set$SCTG, naics_set$groups),
+                                   Market = rep(naics_set$Market, naics_set$groups),
+                                   Group = unlist(lapply(naics_set$groups, seq, from=1)))
+  naics_set_expanded[, Market_Group := paste(Market, Group, sep = "_")]
   
-  marketInProcess <- list()
-  
-  # Create a log file for this step
-  log_file_path <- file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_distchannel.txt")
-  file.create(log_file_path)
-  
-  # Apply the distribution channel model to each market
-  for(market_number in 1:nrow(naics_set)){
-    market <- as.character(naics_set$Market[market_number])
-    groups <- naics_set$groups[market_number]
+  if(USER_COST_CORES > 1){
+    require(parallel)
     
-    # Create place to accumulate group results
-    marketInProcess[[paste0("market-", market)]] <- list()
-    write(print(paste0(Sys.time(), ": Starting Market: ", market, " with ", groups, " groups")), file = log_file_path, append = TRUE)
+    clust <- makeCluster(USER_COST_CORES)
     
-    # Start creating input files for pmg for each group in the naics
-    for(g in 1:groups){
-      
-      taskName <- paste0( "Apply_Distchannel_market-", market, "-group-", g, "-of-", groups)
-      write(print(paste0(Sys.time(), ": Submitting task '", taskName, "' to join ", getNumberOfRunningTasks(), " currently running tasks")), file = log_file_path, append = TRUE)
-      
-      startAsyncTask(
-        taskName, # Name of the task running
-        future({ # Start the future processor
-          # Write message to the console
-          msg <- write(print(paste0(Sys.time(), " Applying Distribution Channel Model for: ", market, ",  Group: ", g)), file = log_file_path, append = TRUE)
-          
-          # Run apply_distchannel function
-          output <- capture.output(apply_distchannel(market, g, TAZGCD))
-          return(output) #no need to return anything to future task handler
-        }),
-        callback = function(asyncResults) {
-          # asyncResults is: list(asyncTaskName,
-          #                        taskResult,
-          #                        startTime,
-          #                        endTime,
-          #                        elapsedTime,
-          #                        caughtError,
-          #                        caughtWarning)
-          
-          #check that cost files was create
-          taskName <- asyncResults[["asyncTaskName"]]
-          taskInfo <- data.table::data.table(namedCapture::str_match_named(taskName, "^.*market[-](?P<taskMarket>[^-]+)-group-(?P<taskGroup>[^-]+)-of-(?P<taskGroups>.*)$"))[1,]
-          taskResult <- asyncResults[["taskResult"]]
-          write(print(taskResult), file = log_file_path, append = TRUE)
-          marketKey <- paste0("market-", taskInfo$taskMarket)
-          groupoutputs <- marketInProcess[[marketKey]]
-          if (is.null(groupoutputs)) {
-            stop(
-              paste0(
-                "for taskInfo$taskMarket ",
-                taskInfo$taskMarket,
-                " marketInProcess[[taskInfo$taskMarket]] (groupoutputs) is NULL! "
-              )
-            )
-          }
-          
-          groupKey <- paste0("group-", taskInfo$taskGroup)
-          groupoutputs[[groupKey]] <- paste0(Sys.time(), ": Finished!")
-          
-          #don't understand why this is necessary but apparently have to re-store list
-          marketInProcess[[marketKey]] <<- groupoutputs
-          
-          write(print(paste0(Sys.time(),": Finished ",taskName,
-                             ", Elapsed time since submitted: ",
-                             asyncResults[["elapsedTime"]],
-                             " # of group results so far for this market=",
-                             length(groupoutputs))),
-                file = log_file_path,append = TRUE)
-          
-          if (length(groupoutputs) == taskInfo$taskGroups) {
-            #delete market from tracked outputs
-            marketInProcess[[marketKey]] <<- NULL
-            write(print(paste0(Sys.time(),": Completed Processing Outputs of all ",
-                               taskInfo$taskGroups," groups for market ",
-                               taskInfo$taskMarket,". Remaining marketInProcess=",
-                               paste0(collapse = ", ", names(marketInProcess)))), 
-                  file = log_file_path, append = TRUE)
-          } #end if all groups in naic are finished
-        },
-        debug = FALSE
-      ) #end call to startAsyncTask
-      processRunningTasks(wait = FALSE, debug = TRUE, maximumTasksToResolve = 1)
-    }
-  } # Finished making inputs to the PMG
-  
-  # Wait until all tasks are finished
-  processRunningTasks(wait = TRUE, debug = TRUE)
-  
-  if (length(marketInProcess) != 0) {
-    stop(paste(
-      "At end of sc_sim_distchannel there were still some unfinished markets! Unfinished: ", 
-      paste0(collapse = ", ", names(marketsInProcess))))
+    clusterCall(clust, 
+                fun = function(packages, lib) lapply(X = as.list(packages), FUN = library, character.only = TRUE, lib.loc = lib),
+                packages = SYSTEM_PKGS, lib = SYSTEM_PKGS_PATH)
+    
+    clusterExport(clust, varlist = getGlobalVars(), envir = .GlobalEnv)
+    
+    clusterExport(clust, 
+                  c("apply_distchannel",
+                    "pc_sim_distchannel",
+                    "predict_logit",
+                    "distchannel_food",
+                    "distchannel_mfg",
+                    "distchan_calcats",
+                    "distchannel_calibration",
+                    "famesctg",
+                    "mesozone_gcd"), 
+                  envir = environment())
+    
+    naicslist <- parLapplyLB(clust, 
+                             1:nrow(naics_set_expanded), 
+                             function(x){
+                               apply_distchannel(market = as.character(naics_set_expanded$Market[x]),
+                                                 g = naics_set_expanded$Group[x],
+                                                 TAZGCD = TAZGCD)
+                             },
+                             chunk.size = 1)
+    stopCluster(clust)
+    
+  } else {
+    
+    naicslist <- lapply(1:nrow(naics_set_expanded), 
+                        function(x){
+                          
+                          print(paste(x,
+                                      as.character(naics_set_expanded$Market[x]),
+                                      naics_set_expanded$Group[x]))
+                          
+                          apply_distchannel(market = as.character(naics_set_expanded$Market[x]),
+                                            g = naics_set_expanded$Group[x],
+                                            TAZGCD = TAZGCD)
+                          
+                        })
+    
   }
   
-  # Stop the future processors
-  future:::ClusterRegistry("stop")
+  # Check that the complete set of naics groups were processed
+  naics_completed <- unlist(naicslist)
+  fwrite(data.table(Market_num = 1:length(naics_completed),
+                    Market = naics_completed),
+         file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_distchannel.csv"))
+  naics_missing <- naics_set_expanded[!Market_Group %in% naics_completed]$Market_Group
+  if(length(naics_missing) > 0) cat("Market-Group combinations missing from market simulation in sc_sim_distchannel: ", naics_missing)
+  
+  t1 <- Sys.time()
+  
+  cat(
+    "\n", "Time taken: ",
+    format(round(t1 - t0, 2), units = "mins")
+  )
   
   return(naics_set)
+  
 }
 
 apply_distchannel <- function(market, g, TAZGCD){
   
-  # Load the workspace for this market and group
-  load(file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, ".Rdata")))
+  # Load the files for this market and group
+  conscg <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_consc.fst")),
+                     as.data.table = TRUE)
+  prodcg <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_prodc.fst")),
+                     as.data.table = TRUE)
+  
+  pc <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_pc.fst")),
+                 as.data.table = TRUE)
   
   # Apply the distribution channel model
   print(paste(Sys.time(), "Applying distribution channel model to", market, "group", g))
@@ -121,29 +99,26 @@ apply_distchannel <- function(market, g, TAZGCD){
      distchannel := i.distchannel,
      on = c("SellerID", "BuyerID")]
   
-  # Save the results
-  save(pc, prodcg, conscg, file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, ".Rdata")))
+  # Save pc
+  write_fst(pc, path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_pc.fst")))
   
-  return(paste("Completed apply_distchannel for market:", market, ", group:", g))
+  return(paste(market, g, sep = "_"))
 }
-
 
 # Distribution channel model
 pc_sim_distchannel <- function(pc, prodcg, conscg, TAZGCD, distchannel_food, distchannel_mfg, calibration = NULL){
-  # Define distchannel_food
-  # Define distchannel_mfg
   
   ### Create variables used in the distribution channel model
   
   # Add required fields to pc
   pc[prodcg, 
      c("Seller.NAICS", "Seller.Size", "SCTG", "Production_zone") := 
-       .(i.Seller.NAICS, i.Seller.Size, i.Commodity_SCTG, i.Production_zone),
+       .(i.NAICS, i.Size, i.Commodity_SCTG, i.Zone),
      on = "SellerID"]
   
   pc[conscg,
      c("Buyer.NAICS", "Buyer.Size", "Consumption_zone") := 
-       .(i.Buyer.NAICS, i.Buyer.Size , i.Consumption_zone),
+       .(i.NAICS, i.Size , i.Zone),
      on = "BuyerID"]
   
   # Create employment and industry dummy variables
@@ -167,10 +142,11 @@ pc_sim_distchannel <- function(pc, prodcg, conscg, TAZGCD, distchannel_food, dis
   
   setkey(pc, Production_zone, Consumption_zone)
   
-  # Add zone to zone distances
+  # Add zone to zone distances (add average if there are any missing values)
   pc[TAZGCD[, .(Production_zone, Consumption_zone, GCD)], 
           Distance := i.GCD,
           on = c("Production_zone", "Consumption_zone")]
+  pc[is.na(Distance), Distance := mean(TAZGCD$GCD, na.rm = TRUE)]
   
   print(paste(Sys.time(), "Applying distribution channel model"))
   
