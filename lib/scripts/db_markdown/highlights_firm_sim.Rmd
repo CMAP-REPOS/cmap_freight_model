@@ -1,0 +1,35 @@
+---
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    theme: yeti
+    css: "ReportDashboardStyles.css"
+editor_options: 
+  chunk_output_type: console
+---
+### Synthesized Firms
+
+```{r Highlights_Synthesized_Firms_ValueBox}
+value <- format(ScenarioFirms[, .N], big.mark = ",", digits = 1, scientific = FALSE, trim = TRUE)
+valueBox(value, caption = "Synthesized Firms", icon = "fa-building-o")
+```
+
+### Employment
+
+```{r Highlights_Employment_ValueBox}
+value <- format(ScenarioFirms[, sum(Employees)], big.mark = ",", digits = 1, scientific = FALSE, trim = TRUE)
+valueBox(value, caption = "Employment", icon = "fa-building-o")
+```
+
+### Production Capacity
+
+```{r Highlights_Capacity_Producers_ValueBox}
+valueBox(format(firm_sim_summary$firms_sum$producers_cap, big.mark = ",", scientific = FALSE), "Capacity at Producers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+### Consumption Requirements
+
+```{r Highlights_Requirements_Consumers_ValueBox}
+valueBox(format(sum(firm_sim_summary$consumers_summary$Requirements), big.mark = ",", scientific = FALSE), "Requirements of Consumers (Tons/Year)", icon = "fa-balance-scale")
+```

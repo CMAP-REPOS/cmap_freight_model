@@ -1,0 +1,457 @@
+---
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    theme: yeti
+    css: "ReportDashboardStyles.css"
+editor_options: 
+  chunk_output_type: console
+---
+
+Compare Firms Emp {data-navmenu="Firm Synthesis Model"}
+=======================================================
+
+firm_sim_taz_land_use {data-width=400 .tabset}
+--------------------------------------------
+
+**Firm Synthesis Model: Comparisons with Reference Scenario**
+
+Firm synthesis output comparisons with reference scenario outputs:
+
+- firm_sim_taz_land_use processes land use inputs and prepares a database for use in later steps of the model. 
+- firm_sim_scale_employees scales the synthesized establishment list to match TAZ employment totals by industry.
+
+Scenarios being compared:
+
+- the current scenario is **`r SCENARIO_NAME`**
+- the reference scenario is **`r SCENARIO_REFERENCE_NAME`**
+
+### firm_sim_taz_land_use: Employment by Industry in Chicago Region
+
+```{r Chart_firm_sim_taz_land_use_industry}
+
+# Organize
+# Current scenario
+dat_scen <- melt.data.table(TAZLandUseCVTM, id.vars = c("TAZ", "Mesozone", "CountyFIPS"), variable.name = "Industry", value.name = "Employment")[!Industry %in% c("HH", "NEmp_Total")]
+dat_scen[, Industry := sub("NEmp_", "", Industry)]
+dat_scen <- dat_scen[, .(Employment = sum(Employment), Source = SCENARIO_NAME), keyby = Industry] 
+
+# Reference scenario
+dat_ref <- melt.data.table(ref_TAZLandUseCVTM, id.vars = c("TAZ", "Mesozone", "CountyFIPS"), variable.name = "Industry", value.name = "Employment")[!Industry %in% c("HH", "NEmp_Total")]
+dat_ref[, Industry := sub("NEmp_", "", Industry)]
+dat_ref <- dat_ref[, .(Employment = sum(Employment), Source = SCENARIO_REFERENCE_NAME), keyby = Industry] 
+
+# Combine
+dat <- rbind(dat_scen, dat_ref)
+dat[, Source := factor(Source, levels = c(SCENARIO_REFERENCE_NAME, SCENARIO_NAME))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_sim_taz_land_use_industry_scen_compare.csv"))
+assign("db_tab_firm_sim_taz_land_use_industry_scen_compare", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Industry", yvar = "Employment",  fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_taz_land_use_industry_scen_compare.png")
+
+```
+
+### firm_sim_taz_land_use: Employment by District in Chicago Region
+
+```{r Chart_firm_sim_taz_land_use_emp_District}
+
+# Organize
+# Current scenario
+dat_scen <- melt.data.table(TAZLandUseCVTM, id.vars = c("TAZ", "Mesozone", "CountyFIPS"), variable.name = "Industry", value.name = "Employment")[Industry %in% c("HH", "NEmp_Total")]
+dat_scen[, Industry := sub("NEmp_", "", Industry)]
+dat_scen[TAZ_System, District := i.DistrictName, on = "TAZ"]
+dat_scen[, TAZ_TYPE := ifelse(TAZ %in% BASE_TAZ_CMAP, "CMAP MPO Area", "Rest of Model Region")]
+dat_scen <- dat_scen[, .(Employment = sum(Employment), Source = SCENARIO_NAME), keyby = .(Industry, District)] 
+
+# Reference scenario
+dat_ref <- melt.data.table(ref_TAZLandUseCVTM, id.vars = c("TAZ", "Mesozone", "CountyFIPS"), variable.name = "Industry", value.name = "Employment")[Industry %in% c("HH", "NEmp_Total")]
+dat_ref[, Industry := sub("NEmp_", "", Industry)]
+dat_ref[TAZ_System, District := i.DistrictName, on = "TAZ"]
+dat_ref[, TAZ_TYPE := ifelse(TAZ %in% BASE_TAZ_CMAP, "CMAP MPO Area", "Rest of Model Region")]
+dat_ref <- dat_ref[, .(Employment = sum(Employment), Source = SCENARIO_REFERENCE_NAME), keyby = .(Industry, District)] 
+
+# Combine
+dat <- rbind(dat_scen[Industry == "Total"], dat_ref[Industry == "Total"])
+dat[, Source := factor(Source, levels = c(SCENARIO_REFERENCE_NAME, SCENARIO_NAME))]
+dat[, District := factor(District, levels = levels(TAZ_System$DistrictName))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_sim_taz_land_use_emp_district_scen_compare.csv"))
+assign("db_tab_firm_sim_taz_land_use_emp_district_scen_compare", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "District", yvar = "Employment", fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_taz_land_use_emp_district_scen_compare.png")
+
+```
+
+### firm_sim_taz_land_use: Households by District in Chicago Region
+
+```{r Chart_firm_sim_taz_land_use_hh_district}
+# Organize
+# Combine
+dat <- rbind(dat_scen[Industry == "HH"], dat_ref[Industry == "HH"])
+dat[, Source := factor(Source, levels = c(SCENARIO_REFERENCE_NAME, SCENARIO_NAME))]
+setnames(dat, c("Industry", "Employment"), c("Landuse", "Households"))
+dat[, District := factor(District, levels = levels(TAZ_System$DistrictName))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_sim_taz_land_use_hh_district_scen_compare.csv"))
+assign("db_tab_firm_sim_taz_land_use_hh_district_scen_compare", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "District", yvar = "Households", fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_taz_land_use_hh_district_scen_compare.png")
+
+```
+
+firm_sim_scale_employees {data-width=400 .tabset}
+--------------------------------------------
+
+### firm_sim_scale_employees: Employment by Industry Groups
+
+```{r Chart_firm_sim_scale_employees_industry}
+# Organize
+# Current scenario
+dat_scen <- ScenarioFirms[, .(Employment = sum(Employees), Source = SCENARIO_NAME), keyby = .(Industry = EmpCatGroupedName)] 
+
+# Reference scenario
+dat_ref <- ref_ScenarioFirms[, .(Employment = sum(Employees), Source = SCENARIO_REFERENCE_NAME), keyby = .(Industry = EmpCatGroupedName)] 
+
+# Combine
+dat <- rbind(dat_scen, dat_ref)
+dat[, Source := factor(Source, levels = c(SCENARIO_REFERENCE_NAME, SCENARIO_NAME))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_sim_scale_employees_industry_scen_compare.csv"))
+assign("db_tab_firm_sim_scale_employees_industry_scen_compare", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Industry", yvar = "Employment", xrotate = TRUE, fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_scale_employees_industry_scen_compare.png")
+
+```
+
+### firm_sim_scale_employees: Employment by Industry (Detailed)
+
+```{r Chart_firm_sim_scale_employees_industry_detailed}
+# Organize
+# Current scenario
+dat_scen <- ScenarioFirms[, .(Employment = sum(Employees), Source = SCENARIO_NAME), keyby = .(EmpCatName)] 
+
+# Reference scenario
+dat_ref <- ref_ScenarioFirms[, .(Employment = sum(Employees), Source = SCENARIO_REFERENCE_NAME), keyby = .(EmpCatName)] 
+
+# Combine
+dat <- rbind(dat_scen, dat_ref)
+dat[, Source := factor(Source, levels = c(SCENARIO_REFERENCE_NAME, SCENARIO_NAME))]
+dat[c_n2_empcats,
+    Industry := i.EmpCatLabel,
+    on = "EmpCatName"]
+dat[, Industry := factor(Industry, levels = c_n2_empcats$EmpCatLabel)]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_sim_scale_employees_industry_detailed_scen_compare.csv"))
+assign("db_tab_firm_sim_scale_employees_industry_detailed_scen_compare", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Industry", yvar = "Employment", xrotate = TRUE, fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_scale_employees_industry_detailed_scen_compare.png")
+
+```
+
+### firm_sim_scale_employees: Employment by District in Chicago Region
+
+```{r Chart_firm_sim_scale_employees_District}
+# Organize
+# Current scenario
+dat_scen <- ScenarioFirms[Region != "Rest of USA", .(Employment = sum(Employees), Source = SCENARIO_NAME), keyby = .(District = Region)] 
+
+# Reference scenario
+dat_ref <- ref_ScenarioFirms[Region != "Rest of USA", .(Employment = sum(Employees), Source = SCENARIO_REFERENCE_NAME), keyby = .(District = Region)] 
+
+# Combine
+dat <- rbind(dat_scen, dat_ref)
+dat[, Source := factor(Source, levels = c(SCENARIO_REFERENCE_NAME, SCENARIO_NAME))]
+dat[, District := factor(District, levels = levels(TAZ_System$DistrictName))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_sim_scale_employees_district_scen_compare.csv"))
+assign("db_tab_firm_sim_scale_employees_district_scen_compare", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "District", yvar = "Employment", fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_scale_employees_district_scen_compare.png")
+
+```
+
+### firm_sim_scale_employees: Employment by Census Region
+
+```{r Chart_firm_sim_scale_employees_census_region}
+# Organize
+# Current scenario
+dat_scen <- ScenarioFirms[, .(Employment = sum(Employees), Source = SCENARIO_NAME), keyby = .(FAFZONE)] 
+
+# Reference scenario
+dat_ref <- ref_ScenarioFirms[, .(Employment = sum(Employees), Source = SCENARIO_REFERENCE_NAME), keyby = .(FAFZONE)] 
+
+# Combine
+dat <- rbind(dat_scen, dat_ref)
+dat[, Source := factor(Source, levels = c(SCENARIO_REFERENCE_NAME, SCENARIO_NAME))]
+dat[TAZ_System,
+    REGION := i.REGION,
+    on = "FAFZONE"]
+dat <- dat[, .(Employment = sum(Employment)), keyby = .(Source, Census_Region = REGION)] 
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_sim_scale_employees_census_region_scen_compare.csv"))
+assign("db_tab_firm_sim_scale_employees_census_region_scen_compare", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Census_Region", yvar = "Employment", fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_scale_employees_census_region_scen_compare.png")
+
+```
+
+### firm_sim_scale_employees: Establishments by Industry (Detailed)
+
+```{r Chart_firm_sim_scale_employees_est_industry_detailed}
+# Organize
+# Current scenario
+dat_scen <- ScenarioFirms[, .(Establishments = .N, Source = SCENARIO_NAME), keyby = .(EmpCatName)] 
+
+# Reference scenario
+dat_ref <- ref_ScenarioFirms[, .(Establishments = .N, Source = SCENARIO_REFERENCE_NAME), keyby = .(EmpCatName)] 
+
+# Combine
+dat <- rbind(dat_scen, dat_ref)
+dat[, Source := factor(Source, levels = c(SCENARIO_REFERENCE_NAME, SCENARIO_NAME))]
+dat[c_n2_empcats,
+    Industry := i.EmpCatLabel,
+    on = "EmpCatName"]
+dat[, Industry := factor(Industry, levels = c_n2_empcats$EmpCatLabel)]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_sim_scale_employees_establishments_industry_detailed_scen_compare.csv"))
+assign("db_tab_firm_sim_scale_employees_establishments_industry_detailed_scen_compare", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Industry", yvar = "Establishments", fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_scale_employees_establishments_industry_detailed_scen_compare.png")
+
+```
+
+### firm_sim_scale_employees: Firm Size by Industry (Detailed)
+
+```{r Chart_firm_sim_scale_employees_firmsize_industry_detailed}
+# Organize
+# Current scenario
+dat_scen <- ScenarioFirms[, .(Employment = sum(Employees), Establishments = .N, Source = SCENARIO_NAME), keyby = .(EmpCatName)] 
+
+# Reference scenario
+dat_ref <- ref_ScenarioFirms[, .(Employment = sum(Employees), Establishments = .N, Source = SCENARIO_REFERENCE_NAME), keyby = .(EmpCatName)] 
+
+# Combine
+dat <- rbind(dat_scen, dat_ref)
+dat[, Source := factor(Source, levels = c(SCENARIO_REFERENCE_NAME, SCENARIO_NAME))]
+dat[c_n2_empcats,
+    Industry := i.EmpCatLabel,
+    on = "EmpCatName"]
+dat[, Industry := factor(Industry, levels = c_n2_empcats$EmpCatLabel)]
+dat[, Firm_Size := Employment/Establishments]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_sim_scale_employees_firm_size_industry_detailed_scen_compare.csv"))
+assign("db_tab_firm_sim_scale_employees_firm_size_industry_detailed_scen_compare", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Industry", yvar = "Firm_Size", fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_scale_employees_firm_size_industry_detailed_scen_compare.png")
+
+```
+
+Compare Prod Cons {data-navmenu="Firm Synthesis Model"}
+=======================================================
+
+production {data-width=400 .tabset}
+--------------------------------------------
+
+**Firm Synthesis Model: Comparisons with Reference Scenario**
+
+Firm synthesis output comparisons with reference scenario outputs:
+
+- production of commodities by location and industry.
+- consumption of commodities by location and industry.
+
+Scenarios being compared:
+
+- the current scenario is **`r SCENARIO_NAME`**
+- the reference scenario is **`r SCENARIO_REFERENCE_NAME`**
+
+
+### Production by Commodity Group (Total)
+
+```{r Chart_firm_sim_production_commodity}
+
+# Organize
+# Current scenario
+# (use the tabulation produced earlier in the dashboard, saved in db_inputs)
+dat_scen <- db_inputs$db_tab_production_commodity_group
+dat_scen[, Source := SCENARIO_NAME]
+  
+# Reference scenario
+dat_ref <- ref_db_tab_production_commodity_group
+dat_ref[, Source := SCENARIO_REFERENCE_NAME]
+
+# Combine
+dat <- rbind(dat_scen, dat_ref)
+dat[, Source := factor(Source, levels = c(SCENARIO_REFERENCE_NAME, SCENARIO_NAME))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_sim_production_commodity_group_scen_compare.csv"))
+assign("db_tab_firm_sim_production_commodity_group_scen_compare", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat[,.(Capacity = sum(Capacity)), by = .(Commodity_Group, Source)], xvar = "Commodity_Group", yvar = "Capacity", xrotate = TRUE, fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_production_total_commodity_group_scen_compare.png")
+
+```
+
+### Production by Commodity Group (Domestic, Non-Wholesale)
+
+```{r Chart_firm_sim_production_commodity_domestic}
+
+# Plot
+bar_plotter(dat[Type == "Domestic"], xvar = "Commodity_Group", yvar = "Capacity", xrotate = TRUE, fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_production_domestic_commodity_group_scen_compare.png")
+
+```
+
+### Production by Commodity Group (Foreign)
+
+```{r Chart_firm_sim_production_commodity_foreign}
+
+# Plot
+bar_plotter(dat[Type == "Foreign"], xvar = "Commodity_Group", yvar = "Capacity", xrotate = TRUE, fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_production_foreign_commodity_group_scen_compare.png")
+
+```
+
+### Production by Commodity Group (Wholesale)
+
+```{r Chart_firm_sim_production_commodity_wholesale}
+
+# Plot
+bar_plotter(dat[Type == "Wholesale"], xvar = "Commodity_Group", yvar = "Capacity", xrotate = TRUE, fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_production_wholesale_commodity_group_scen_compare.png")
+
+```
+
+### Production by Commodity Group (Table)
+
+### Production by Commodity (Table)
+
+```{r Table_firm_sim_production_commodity}
+
+# Organize
+# Current scenario
+# (use the tabulation produced earlier in the dashboard, saved in db_inputs)
+dat_scen <- db_inputs$db_tab_production_commodity_type
+setnames(dat_scen, names(dat_scen)[4:ncol(dat_scen)], paste(SCENARIO_NAME, names(dat_scen)[4:ncol(dat_scen)], sep = "_"))
+
+# Reference scenario
+dat_ref <- ref_db_tab_production_commodity_type
+setnames(dat_ref, names(dat_ref)[4:ncol(dat_ref)], paste(SCENARIO_REFERENCE_NAME, names(dat_ref)[4:ncol(dat_ref)], sep = "_"))
+
+# Combine
+dat <- merge(dat_ref, dat_scen, 
+             by = c("Commodity_SCTG", "Commodity", "Commodity_Group"),
+             sort = FALSE)
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_sim_production_commodity_type_scen_compare.csv"))
+assign("db_tab_firm_sim_production_commodity_type_scen_compare", dat, envir = db_inputs)
+
+# Table
+kable(dat, escape=FALSE,align = "lllrrrrrrrr") %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(c(7, 11), background = "#f2f2f2")
+
+
+```
+
+consumption {data-width=400 .tabset}
+--------------------------------------------
+
+### Consumption by Commodity Group (Total)
+
+```{r Chart_firm_sim_consumption_commodity}
+
+# Organize
+# Current scenario
+# (use the tabulation produced earlier in the dashboard, saved in db_inputs)
+dat_scen <- db_inputs$db_tab_consumption_commodity_group
+dat_scen[, Source := SCENARIO_NAME]
+  
+# Reference scenario
+dat_ref <- ref_db_tab_consumption_commodity_group
+dat_ref[, Source := SCENARIO_REFERENCE_NAME]
+
+# Combine
+dat <- rbind(dat_scen, dat_ref)
+dat[, Source := factor(Source, levels = c(SCENARIO_REFERENCE_NAME, SCENARIO_NAME))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_sim_consumption_commodity_group_scen_compare.csv"))
+assign("db_tab_firm_sim_consumption_commodity_group_scen_compare", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat[,.(Requirements = sum(Requirements)), by = .(Commodity_Group, Source)], xvar = "Commodity_Group", yvar = "Requirements", xrotate = TRUE, fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_consumption_total_commodity_group_scen_compare.png")
+
+```
+
+### Consumption by Commodity Group (Domestic)
+
+```{r Chart_firm_sim_consumption_commodity_domestic}
+
+# Plot
+bar_plotter(dat[Type == "Domestic"], xvar = "Commodity_Group", yvar = "Requirements", xrotate = TRUE, fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_consumption_domestic_commodity_group_scen_compare.png")
+
+```
+
+### Consumption by Commodity Group (Foreign)
+
+```{r Chart_firm_sim_consumptioncommodity_foreign}
+
+# Plot
+bar_plotter(dat[Type == "Foreign"], xvar = "Commodity_Group", yvar = "Requirements", xrotate = TRUE, fill = "Source", position = "dodge", coord_flip = TRUE, png_name = "p_firm_sim_consumption_foreign_commodity_group_scen_compare.png")
+
+```
+
+### Consumption by Commodity Group (Table)
+
+### Consumption by Commodity (Table)
+
+<!-- ```{r Table_firm_sim_consumption_commodity} -->
+
+<!-- # Organize -->
+<!-- # Current scenario -->
+<!-- # (use the tabulation produced earlier in the dashboard, saved in db_inputs) -->
+<!-- dat_scen <- db_inputs$db_tab_consumption_commodity_type -->
+<!-- setnames(dat_scen, names(dat_scen)[4:ncol(dat_scen)], paste(SCENARIO_NAME, names(dat_scen)[4:ncol(dat_scen)], sep = "_")) -->
+
+<!-- # Reference scenario -->
+<!-- dat_ref <- ref_db_tab_production_commodity_type -->
+<!-- setnames(dat_ref, names(dat_ref)[4:ncol(dat_ref)], paste(SCENARIO_REFERENCE_NAME, names(dat_ref)[4:ncol(dat_ref)], sep = "_")) -->
+
+<!-- # Combine -->
+<!-- dat <- merge(dat_ref, dat_scen,  -->
+<!--              by = c("Commodity_SCTG", "Commodity", "Commodity_Group"), -->
+<!--              sort = FALSE) -->
+
+<!-- # Save -->
+<!-- fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "firm_sim_production_commodity_type_scen_compare.csv")) -->
+<!-- assign("db_tab_firm_sim_production_commodity_type_scen_compare", dat, envir = db_inputs) -->
+
+<!-- # Table -->
+<!-- kable(dat, escape=FALSE,align = "lllrrrrrrrr") %>% -->
+<!--   kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>% -->
+<!--   row_spec(nrow(dat), background = "#f2f2f2") %>% -->
+<!--   column_spec(c(7, 11), background = "#f2f2f2") -->
+
+
+<!-- ``` -->
+

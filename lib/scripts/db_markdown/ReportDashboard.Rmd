@@ -1,0 +1,427 @@
+---
+title: "<b><i>CMAP</i></b> | Freight Shipment and Freight Truck Touring Model | `r paste(SCENARIO_NAME, 'Scenario')`"
+date: "`r format(SCENARIO_RUN_START, '%Y-%m-%d')`"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    theme: yeti
+    css: "ReportDashboardStyles.css"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r ggplot_Theme}
+theme_db <- theme_bw() + theme(plot.margin = unit(c(10,10,20,10),"pt")) 
+```
+
+```{r Map_Settings}
+map_type <- "CartoDB.Positron"
+```
+
+Overview {data-icon="fa-home"}
+============================================
+
+Highlights {data-width=150}
+--------------------------------------------
+
+**Overview**
+
+Firms, employment, and freight truck trip totals for the CMAP region
+
+```{r highlights_build_firm_sim, results='asis', eval=SCENARIO_DB_FIRMSYN}
+highlights_firm_sim <- knitr::knit_child('highlights_firm_sim.Rmd',
+                              envir = environment(),
+                              quiet = TRUE)
+cat(unlist(highlights_firm_sim), sep = '\n')
+```
+
+<!-- ```{r highlights_build_cv_sim, results='asis', eval=SCENARIO_DB_CVTM} -->
+<!-- highlights_cv_sim <- knitr::knit_child('highlights_cv_sim.Rmd', -->
+<!--                               envir = environment(), -->
+<!--                               quiet = TRUE) -->
+<!-- cat(unlist(highlights_cv_sim), sep = '\n') -->
+<!-- ``` -->
+
+<!-- ```{r highlights_build_tt, results='asis', eval=SCENARIO_DB_TT} -->
+<!-- highlights_tt <- knitr::knit_child('highlights_tt.Rmd', -->
+<!--                               envir = environment(), -->
+<!--                               quiet = TRUE) -->
+<!-- cat(unlist(highlights_tt), sep = '\n') -->
+<!-- ``` -->
+
+
+Summary {data-width=200, .tabset}
+--------------------------------------------
+
+### Introduction
+
+<style>
+div#introduction.section.level3.chart-wrapper.chart-wrapper-flex {
+  flex: 70% !important;
+  font-size: 12px !important;
+}
+div#about-this-document.section.level3.chart-wrapper.chart-wrapper-flex {
+  flex: 30% !important;
+  font-size: 12px !important;
+}
+</style>
+
+The CMAP Freight Model simulates global and national freight shipment movements and the resulting truck trips within the 21 county CMAP model region. This dashboard presents the results from a scenario run of the model, indicated by the scenario name and year indicated in the header above.
+
+The model comprises three components; the outputs from each one are shown in the other tabs of the dashboard:
+
+1. Firm Synthesis Model: a list of businesses establishments in the USA, and their production and consumption of commodities
+2. Supply Chain Model: a simulation of shipments between the business establishments including their procurement stratagies and shipment mode choices
+2. Freight Truck Touring Model: simulation of freight truck travel within the CMAP region
+
+### About this Document
+
+This stand-alone interactive dashboard is viewable from most modern Internet browsers. All of the data, charts, and maps viewable in this dashboard are embedded directly into the HTML file, so users are encouraged to share the scenario results with others via this document. An Internet connection is necessary for the best user experience, but is not required.
+
+Users may navigate to different areas of the dashboard using the navigation bar at the top of the page, and may interact directly with most tables, charts, and maps.
+
+This document is best viewed using the most recent versions of the following web browsers:
+
+* [Google Chrome](https://www.google.com/chrome/browser/desktop/)
+* [Mozilla Firefox](https://www.mozilla.org/en-US/firefox/new/)
+* Microsoft Edge (Must be running Windows 10)
+
+Summary Results {data-width=300, .tabset}
+--------------------------------------------
+
+### Firms
+
+```{r Summary_Table_Firms}
+
+# Summarize the firms by industry and region
+dat <- add_totals(dcast.data.table(ScenarioFirms[,.(Firms = .N),
+                                         keyby = .(TAZ_TYPE, EmpCatGroupedName)],
+                     EmpCatGroupedName ~ TAZ_TYPE,
+                     fun.aggregate = sum,
+                     value.var = "Firms"))
+
+cols <- names(dat)[2:ncol(dat)]
+dat[, (cols) := lapply(.SD, format, digits = 1, big.mark = ",", scientific = FALSE), .SDcols = cols]
+
+kable(dat, escape=FALSE, align = "lrrrr") %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(ncol(dat), background = "#f2f2f2")
+
+```
+
+### Employment
+
+```{r Summary_Table_Employment}
+
+# Summarize the employment by industry and region
+dat <- add_totals(dcast.data.table(ScenarioFirms[,.(Employees = sum(Employees)),
+                                         keyby = .(TAZ_TYPE, EmpCatGroupedName)],
+                     EmpCatGroupedName ~ TAZ_TYPE,
+                     fun.aggregate = sum,
+                     value.var = "Employees"))
+
+cols <- names(dat)[2:ncol(dat)]
+dat[, (cols) := lapply(.SD, format, digits = 1, big.mark = ",", scientific = FALSE), .SDcols = cols]
+
+kable(dat, escape=FALSE, align = "lrrrr") %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(ncol(dat), background = "#f2f2f2")
+
+```
+
+
+### Trips
+
+<!-- ```{r Summary_Table_Trips} -->
+
+<!-- # Summarize the tmh_vtods table for trips -->
+<!-- dat <- add_totals(dcast.data.table(tmh_vtods[,.(Trips = sum(Trips)),  -->
+<!--                                          keyby = .(Vehicle, TOD, Hours)], -->
+<!--                      TOD + Hours ~ Vehicle, -->
+<!--                      fun.aggregate = sum, -->
+<!--                      value.var = "Trips"), -->
+<!--                   idcols = 2) -->
+
+<!-- dat[is.na(TOD),c("TOD","Hours"):=.("Total","")] -->
+<!-- cols <- names(dat)[3:ncol(dat)] -->
+<!-- dat[, (cols) := lapply(.SD, format, digits = 0, big.mark = ",", scientific = FALSE), .SDcols = cols] -->
+
+<!-- kable(dat, escape=FALSE, align = "llrrrrr") %>% -->
+<!--   kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>% -->
+<!--   row_spec(nrow(dat), background = "#f2f2f2") %>% -->
+<!--   column_spec(ncol(dat), background = "#f2f2f2") -->
+
+<!-- ``` -->
+
+> Units in the table is number of daily trips within the model region.
+
+### Vehicle Miles Traveled
+
+<!-- ```{r Summary_Table_VMT} -->
+
+<!-- # Summarize the tmh_vtods table for VMT -->
+<!-- dat <- add_totals(dcast.data.table(tmh_vtods[,.(VMT = sum(VMT)),  -->
+<!--                                          keyby = .(Vehicle, TOD, Hours)], -->
+<!--                      TOD + Hours ~ Vehicle, -->
+<!--                      fun.aggregate = sum, -->
+<!--                      value.var = "VMT"), -->
+<!--                   idcols = 2) -->
+
+<!-- dat[is.na(TOD),c("TOD","Hours"):=.("Total","")] -->
+<!-- cols <- names(dat)[3:ncol(dat)] -->
+<!-- dat[, (cols) := lapply(.SD, format, digits = 0, big.mark = ",", scientific = FALSE), .SDcols = cols] -->
+
+<!-- kable(dat, escape=FALSE, align = "llrrrrr") %>% -->
+<!--   kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>% -->
+<!--   row_spec(nrow(dat), background = "#f2f2f2") %>% -->
+<!--   column_spec(ncol(dat), background = "#f2f2f2") -->
+
+<!-- ``` -->
+
+> Units in the table is vehicle miles traveled within the model region.
+
+
+### Vehicle Hours Traveled
+
+<!-- ```{r Summary_Table_VHT} -->
+
+<!-- # Summarize the tmh_vtods table for VHT -->
+<!-- dat <- add_totals(dcast.data.table(tmh_vtods[,.(VHT = sum(VHT)),  -->
+<!--                                          keyby = .(Vehicle, TOD, Hours)], -->
+<!--                      TOD + Hours ~ Vehicle, -->
+<!--                      fun.aggregate = sum, -->
+<!--                      value.var = "VHT"), -->
+<!--                   idcols = 2) -->
+
+<!-- dat[is.na(TOD),c("TOD","Hours"):=.("Total","")] -->
+<!-- cols <- names(dat)[3:ncol(dat)] -->
+<!-- dat[, (cols) := lapply(.SD, format, digits = 0, big.mark = ",", scientific = FALSE), .SDcols = cols] -->
+
+<!-- kable(dat, escape=FALSE, align = "llrrrrr") %>% -->
+<!--   kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>% -->
+<!--   row_spec(nrow(dat), background = "#f2f2f2") %>% -->
+<!--   column_spec(ncol(dat), background = "#f2f2f2") -->
+
+<!-- ``` -->
+
+> Units in the table is vehicle hours traveled within the model region.
+
+### Average Trip Distance
+
+<!-- ```{r Summary_Table_MeanDistance} -->
+
+<!-- # Summarize the tmh_vtods table for mean distance -->
+<!-- dat_vehicle <- cbind(dcast.data.table(tmh_vtods[,.(MeanDist = sum(VMT, na.rm = TRUE)/sum(Trips, na.rm = TRUE)),  -->
+<!--                                          keyby = .(Vehicle, TOD, Hours)], -->
+<!--                      TOD + Hours ~ Vehicle, -->
+<!--                      fun.aggregate = sum, -->
+<!--                      value.var = "MeanDist"), -->
+<!--                      tmh_vtods[,.(Total = sum(VMT, na.rm = TRUE)/sum(Trips, na.rm = TRUE)),  -->
+<!--                                          keyby = .(TOD)][,.(Total)]) -->
+
+<!-- dat_total <- cbind(dcast.data.table(tmh_vtods[,.(TOD = "Total", Hours = "", MeanDist = sum(VMT, na.rm = TRUE)/sum(Trips, na.rm = TRUE)),  -->
+<!--                                          keyby = .(Vehicle)], -->
+<!--                      TOD + Hours ~ Vehicle, -->
+<!--                      fun.aggregate = sum, -->
+<!--                      value.var = "MeanDist"),  -->
+<!--                  tmh_vtods[,.(Total = sum(VMT, na.rm = TRUE)/sum(Trips, na.rm = TRUE))]) -->
+
+<!-- dat <- rbind(dat_vehicle, -->
+<!--              dat_total) -->
+
+<!-- dat[is.na(dat)] <- 0 -->
+<!-- cols <- names(dat)[3:ncol(dat)] -->
+<!-- dat[, (cols) := lapply(.SD, format, digits = 3, big.mark = ",", scientific = FALSE), .SDcols = cols] -->
+
+<!-- kable(dat, escape=FALSE, align = "llrrrrr") %>% -->
+<!--   kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>% -->
+<!--   row_spec(nrow(dat), background = "#f2f2f2") %>% -->
+<!--   column_spec(ncol(dat), background = "#f2f2f2") -->
+
+<!-- ``` -->
+
+<!-- > Units in the table is average trip distance in miles for trips within the model region. -->
+
+
+### Average Trip Time
+
+<!-- ```{r Summary_Table_MeanTime} -->
+
+<!-- # Summarize the tmh_vtods table for mean time -->
+<!-- dat_vehicle <- cbind(dcast.data.table(tmh_vtods[,.(MeanTime = sum(VHT * 60, na.rm = TRUE)/sum(Trips, na.rm = TRUE)),  -->
+<!--                                          keyby = .(Vehicle, TOD, Hours)], -->
+<!--                      TOD + Hours ~ Vehicle, -->
+<!--                      fun.aggregate = sum, -->
+<!--                      value.var = "MeanTime"), -->
+<!--                      tmh_vtods[,.(Total = sum(VHT * 60, na.rm = TRUE)/sum(Trips, na.rm = TRUE)),  -->
+<!--                                          keyby = .(TOD)][,.(Total)]) -->
+
+<!-- dat_total <- cbind(dcast.data.table(tmh_vtods[,.(TOD = "Total", Hours = "", MeanTime = sum(VHT * 60, na.rm = TRUE)/sum(Trips, na.rm = TRUE)),  -->
+<!--                                          keyby = .(Vehicle)], -->
+<!--                      TOD + Hours ~ Vehicle, -->
+<!--                      fun.aggregate = sum, -->
+<!--                      value.var = "MeanTime"),  -->
+<!--                  tmh_vtods[,.(Total = sum(VHT * 60, na.rm = TRUE)/sum(Trips, na.rm = TRUE))]) -->
+
+<!-- dat <- rbind(dat_vehicle, -->
+<!--              dat_total) -->
+
+<!-- dat[is.na(dat)] <- 0 -->
+<!-- cols <- names(dat)[3:ncol(dat)] -->
+<!-- dat[, (cols) := lapply(.SD, format, digits = 3, big.mark = ",", scientific = FALSE), .SDcols = cols] -->
+
+<!-- kable(dat, escape=FALSE, align = "llrrrrr") %>% -->
+<!--   kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>% -->
+<!--   row_spec(nrow(dat), background = "#f2f2f2") %>% -->
+<!--   column_spec(ncol(dat), background = "#f2f2f2") -->
+
+<!-- ``` -->
+
+> Units in the table is average trip travel time in minutes for trips within the model region.
+
+
+### Average Speed
+
+<!-- ```{r Summary_Table_MeanSpeed} -->
+
+<!-- # Summarize the tmh_vtods table for mean speed -->
+<!-- dat_vehicle <- cbind(dcast.data.table(tmh_vtods[,.(MeanSpeed = sum(VMT, na.rm = TRUE)/sum(VHT, na.rm = TRUE)),  -->
+<!--                                          keyby = .(Vehicle, TOD, Hours)], -->
+<!--                      TOD + Hours ~ Vehicle, -->
+<!--                      fun.aggregate = sum, -->
+<!--                      value.var = "MeanSpeed"), -->
+<!--                      tmh_vtods[,.(Total = sum(VMT, na.rm = TRUE)/sum(VHT, na.rm = TRUE)),  -->
+<!--                                          keyby = .(TOD)][,.(Total)]) -->
+
+<!-- dat_total <- cbind(dcast.data.table(tmh_vtods[,.(TOD = "Total", Hours = "", MeanSpeed = sum(VMT, na.rm = TRUE)/sum(VHT, na.rm = TRUE)),  -->
+<!--                                          keyby = .(Vehicle)], -->
+<!--                      TOD + Hours ~ Vehicle, -->
+<!--                      fun.aggregate = sum, -->
+<!--                      value.var = "MeanSpeed"),  -->
+<!--                  tmh_vtods[,.(Total = sum(VMT, na.rm = TRUE)/sum(VHT, na.rm = TRUE))]) -->
+
+<!-- dat <- rbind(dat_vehicle, -->
+<!--              dat_total) -->
+
+<!-- dat[is.na(dat)] <- 0 -->
+<!-- cols <- names(dat)[3:ncol(dat)] -->
+<!-- dat[, (cols) := lapply(.SD, format, digits = 3, big.mark = ",", scientific = FALSE), .SDcols = cols] -->
+
+<!-- kable(dat, escape=FALSE, align = "llrrrrr") %>% -->
+<!--   kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>% -->
+<!--   row_spec(nrow(dat), background = "#f2f2f2") %>% -->
+<!--   column_spec(ncol(dat), background = "#f2f2f2") -->
+
+<!-- ``` -->
+
+> Units in the table is average trip speed in miles per hour, for trips within the model region.
+
+Model Region Map and Glossary {data-width=300, .tabset}
+--------------------------------------------
+
+### Model Region and Traffic Analysis Zone (TAZ) System
+
+```{r Model_Region_Map}
+map <- leaflet() %>%
+  addProviderTiles(map_type, group = "Background Map") %>%
+  addLayersControl(
+    overlayGroups = "Background Map", options = layersControlOptions(collapsed = FALSE)
+  ) %>%
+  addTAZPolygons() %>%
+  addLegend(position = "bottomright", pal = colorFun, values = ~Group, data = TAZ.polys) %>%
+  addPolygons(data = shp, weight = 0.5,
+              opacity = 0.25, color = "grey",
+              fillOpacity = 0, fillColor = "white") %>%
+  addEasyButton(easyButton(
+    icon = "ion-arrow-shrink",
+    title = "Reset View",
+    onClick = JS("function(btn, map){
+                 map.setView(map._initialCenter, map._initialZoom);}"))) %>%
+  htmlwidgets::onRender(JS("function(el, x){
+  var map = this;
+  map.whenReady(function(){
+    map._initialCenter = map.getCenter();
+    map._initialZoom = map.getZoom();
+  });
+  }"))
+map %>% htmlwidgets::onRender(JS(paste0("function(el, x){
+var map = this;
+var corner1 = new L.LatLng(",CMAP_BBOX["ymin"],", ",CMAP_BBOX["xmin"],"),
+    corner2 = new L.LatLng(",CMAP_BBOX["ymax"],", ",CMAP_BBOX["xmax"],"),
+    bounds = new L.LatLngBounds(corner1, corner2);
+map.fitBounds(bounds);
+}")))
+```
+
+### Model Region Districts and TAZ Ranges
+
+```{r TAZ_Ranges_Table}
+# Show table
+
+kable(TAZ_System[,.(TAZ_Min = min(TAZ), TAZ_Max = max(TAZ)), keyby = .(DistrictName, CountyName)], escape=FALSE, col.names = c("District", "County", "TAZ (Minimum Number)", "TAZ (Maximum Number)")) %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("striped"))
+
+```
+
+> Dekalb and Grundy Counties in Illinois each have a single TAZ within the CMAP MPO Region. The rest of those counties are in the non-CMAP part of the model region.
+
+### Employment Categories
+
+```{r n2_To_Employment_Category}
+# Show table
+
+kable(c_n2_empcats, escape=FALSE, col.names = c("Employment Category",
+                                               "Employment Cateogry Description",
+                                               "Employment Category Label",
+                                               "Employment Group")) %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("striped"))
+
+```
+
+<!-- ### CVTM Stop Activities -->
+
+<!-- ```{r CVTM_Stop_Activities_Descr} -->
+<!-- # Show table -->
+<!-- activities_table <- data.table(Activity = c("Goods", "Service", "Return", "Break/Meal", "Vehicle Service", "Other"), -->
+<!--                          Scheduled = c("Scheduled", "Scheduled", "Scheduled", "Non-Scheduled", "Non-Scheduled", "Non-Scheduled"), -->
+<!--                          Description = c("Delivery or pick-up of goods", "Service call at a customer", "Final stop of a tour returning to the start location", "Driver break or meal stop", "Driver stop to refuel or service vehicle", "Other non-scheduled stops")) -->
+
+<!-- kable(activities_table, escape=FALSE) %>% -->
+<!--   kable_styling(fixed_thead = TRUE, bootstrap_options = c("striped")) -->
+
+<!-- ``` -->
+
+### Time Periods
+
+<!-- ```{r Time_Period_Descr} -->
+<!-- # Show table -->
+
+<!-- kable(tod_labels, col.names = c("Time Period", "Hours Range")) %>% -->
+<!--   kable_styling(fixed_thead = TRUE, bootstrap_options = c("striped")) -->
+
+<!-- ``` -->
+
+```{r section_build_firm_sim, results='asis', eval=SCENARIO_DB_FIRMSYN}
+section_firm_sim <- knitr::knit_child('section_firm_sim.Rmd',
+                              envir = environment(),
+                              quiet = TRUE)
+cat(unlist(section_firm_sim), sep = '\n')
+```
+
+<!-- ```{r section_build_cv_sim, results='asis', eval=SCENARIO_DB_CVTM} -->
+<!-- section_cv_sim <- knitr::knit_child('section_cv_sim.Rmd', -->
+<!--                               envir = environment(), -->
+<!--                               quiet = TRUE) -->
+<!-- cat(unlist(section_cv_sim), sep = '\n') -->
+<!-- ``` -->
+
+<!-- ```{r section_build_tt, results='asis', eval=SCENARIO_DB_TT} -->
+<!-- section_tt <- knitr::knit_child('section_tt.Rmd', -->
+<!--                               envir = environment(), -->
+<!--                               quiet = TRUE) -->
+<!-- cat(unlist(section_tt), sep = '\n') -->
+<!-- ``` -->
+

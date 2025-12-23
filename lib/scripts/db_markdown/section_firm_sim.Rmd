@@ -1,0 +1,1454 @@
+---
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+    theme: yeti
+    css: "ReportDashboardStyles.css"
+editor_options: 
+  chunk_output_type: console
+---
+
+Firms {data-navmenu="Firm Synthesis Model"}
+============================================
+
+Highlights {data-width=150}
+--------------------------------------------
+
+**Firm Synthesis Model: Firms in the United Stated and within the CMAP Model Region**
+
+Firm synthesis model outputs enumerating firms by size, location, and industry.
+
+### Synthesized Firms City of Chicago
+
+```{r Synthesized_Firms_ValueBox_Chicago}
+value <- format(ScenarioFirms[TAZ %in% BASE_TAZ_CHICAGO, .N], big.mark = ",", trim = TRUE)
+valueBox(value, caption = "Synthesized Firms<br>City of Chicago</br>", icon = "fa-building-o")
+```
+
+### Synthesized Firms Cook County Outside Chicago
+
+```{r Synthesized_Firms_ValueBox_Cook_Not_Chicago}
+value <- format(ScenarioFirms[TAZ %in% BASE_TAZ_COOK & !TAZ %in% BASE_TAZ_CHICAGO, .N], big.mark = ",", trim = TRUE)
+valueBox(value, caption = "Synthesized Firms<br>Cook County (Not Chicago)</br>", icon = "fa-building-o")
+```
+
+### Synthesized Firms Rest of CMAP MPO Area (Not Cook County)
+
+```{r Synthesized_Firms_ValueBox_CMAP_MPO}
+value <- format(ScenarioFirms[TAZ %in% BASE_TAZ_CMAP & !TAZ %in% BASE_TAZ_COOK, .N], big.mark = ",", trim = TRUE)
+valueBox(value, caption = "Synthesized Firms<br>Rest of CMAP MPO Area (Not Cook County)</br>", icon = "fa-building-o")
+```
+
+### Synthesized Firms Rest of Region
+
+```{r Synthesized_Firms_ValueBox_Rest_Region}
+value <- format(ScenarioFirms[TAZ_TYPE == "Non-CMAP Part of Model Region", .N], big.mark = ",", trim = TRUE)
+valueBox(value, caption = "Synthesized Firms<br>Rest of Model Region</br>", icon = "fa-building-o")
+```
+
+### Synthesized Firms Model Region
+
+```{r Synthesized_Firms_ValueBox_Model_Region}
+value <- format(ScenarioFirms[TAZ_TYPE %in% c("CMAP MPO Area", "Non-CMAP Part of Model Region"), .N], big.mark = ",", trim = TRUE)
+valueBox(value, caption = "Synthesized Firms<br>Model Region</br>", icon = "fa-building-o")
+```
+
+### Synthesized Firms Rest of Country
+
+```{r Synthesized_Firms_ValueBox_Rest_USA}
+value <- format(ScenarioFirms[TAZ_TYPE == "Rest of USA", .N], big.mark = ",", trim = TRUE)
+valueBox(value, caption = "Synthesized Firms<br>Rest of USA</br>", icon = "fa-building-o")
+```
+
+### Synthesized Firms USA
+
+```{r Synthesized_Firms_ValueBox_ALL}
+value <- format(ScenarioFirms[, .N], big.mark = ",", trim = TRUE)
+valueBox(value, caption = "Synthesized Firms<br>All of USA</br>", icon = "fa-building-o")
+```
+
+Column {data-width=400 .tabset}
+--------------------------------------------
+### Firms by Industry
+
+```{r Map_Firms_By_Industry}
+k <- 25
+map <- leaflet(width = "100%") %>%
+  addProviderTiles(map_type, group = "Background Map")
+map <- map %>% addTAZPoints(data = ScenarioFirms[TAZ_TYPE %in% c("CMAP MPO Area", "Non-CMAP Part of Model Region")],
+                            shp = shp,
+                            group = "EmpCatGroupedName",
+                            scale.factor = k) %>%
+  addTAZPolygons() %>%
+  addPolygons(data = shp, weight = 0.5,
+              opacity = 0.25, color = "grey",
+              fillOpacity = 0, fillColor = "white") %>%
+  addEasyButton(easyButton(
+    icon = "ion-arrow-shrink",
+    title = "Reset View",
+    onClick = JS("function(btn, map){
+                 map.setView(map._initialCenter, map._initialZoom);}"))) %>%
+  htmlwidgets::onRender(JS("function(el, x){
+  var map = this;
+  map.whenReady(function(){
+    map._initialCenter = map.getCenter();
+    map._initialZoom = map.getZoom();
+  });
+  }"))
+map %>% htmlwidgets::onRender(JS(paste0("function(el, x){
+var map = this;
+var corner1 = new L.LatLng(",CMAP_BBOX["ymin"],", ",CMAP_BBOX["xmin"],"),
+    corner2 = new L.LatLng(",CMAP_BBOX["ymax"],", ",CMAP_BBOX["xmax"],"),
+    bounds = new L.LatLngBounds(corner1, corner2);
+map.fitBounds(bounds);
+}")))
+```
+
+>`r if(SCENARIO_RUN_FIRMSYN) {paste0("Note: Each data point represents ", comma(k), " firms within model region and precise locations are illustrative as firms are only identified geographically at the TAZ-level.")}`
+
+### Firms by Size
+
+```{r Map_Firms_By_Size}
+k <- 25
+map <- leaflet(shp, width = "100%") %>%
+  addProviderTiles(map_type, group = "Background Map")
+map <- map %>% addTAZPoints(data = ScenarioFirms[TAZ_TYPE %in% c("CMAP MPO Area", "Non-CMAP Part of Model Region")],
+                            shp = shp,
+                            group = "esizecat", scale.factor = k) %>%
+  addTAZPolygons() %>%
+  addPolygons(data = shp, weight = 0.5,
+              opacity = 0.25, color = "grey",
+              fillOpacity = 0, fillColor = "white") %>%
+  addEasyButton(easyButton(
+    icon = "ion-arrow-shrink",
+    title = "Reset View",
+    onClick = JS("function(btn, map){
+                 map.setView(map._initialCenter, map._initialZoom);}"))) %>%
+  htmlwidgets::onRender(JS("function(el, x){
+  var map = this;
+  map.whenReady(function(){
+    map._initialCenter = map.getCenter();
+    map._initialZoom = map.getZoom();
+  });
+  }"))
+map %>% htmlwidgets::onRender(JS(paste0("function(el, x){
+var map = this;
+var corner1 = new L.LatLng(",CMAP_BBOX["ymin"],", ",CMAP_BBOX["xmin"],"),
+    corner2 = new L.LatLng(",CMAP_BBOX["ymax"],", ",CMAP_BBOX["xmax"],"),
+    bounds = new L.LatLngBounds(corner1, corner2);
+map.fitBounds(bounds);
+}")))
+```
+
+>`r if(SCENARIO_DB_FIRMSYN) {paste0("Note: Each data point represents ", comma(k), " firms within model region and precise locations are illustrative as firms are only identified geographically at the TAZ-level.")}`
+
+Column {data-width=400 .tabset}
+--------------------------------------------
+
+### Firms by Industry (CMAP Model Region)
+
+```{r Chart_Firms_By_Industry}
+# Organize
+dat <- ScenarioFirms[, .N, keyby = .(Region = TAZ_TYPE, Industry = EmpCatGroupedName)]
+dat[, Pct := N/sum(N), by = Region]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Firms_by_Industry.csv"))
+assign("db_tab_firms_industry", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat[Region != "Rest of USA"], xvar = "Industry", yvar = "N", ylabel = "Firms",
+                        fill = "Region", position = "dodge", coord_flip = TRUE)
+```
+
+### Firms by Industry (Rest of USA)
+
+```{r Chart_Firms_By_Industry_RoUSA}
+
+# Plot
+bar_plotter(dat[Region == "Rest of USA"], xvar = "Industry", yvar = "N", ylabel = "Firms",
+                        fill = "Region", position = "dodge", coord_flip = TRUE)
+```
+
+### Firms by Industry (Percent)
+
+```{r Chart_Firms_By_Industry_Percent}
+
+# Plot
+bar_plotter(dat, xvar = "Industry", yvar = "Pct", ylabel = "Percent of Firms",
+                        fill = "Region", position = "dodge", coord_flip = TRUE)
+```
+
+### Firms by Size (CMAP Model Region)
+
+```{r Chart_Firms_By_Size}
+# Organize
+dat <- ScenarioFirms[, .N, keyby = .(Region = TAZ_TYPE, Size = esizecat)]
+dat[, Pct := N/sum(N), by = Region]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Firms_by_Size.csv"))
+assign("db_tab_firms_size", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat[Region != "Rest of USA"], xvar = "Size", yvar = "N", xlabel = "Firm Size Category", ylabel = "Firms", fill = "Region", position = "dodge", coord_flip = TRUE)
+```
+
+### Firms by Size (Rest of USA)
+
+```{r Chart_Firms_By_Size_RofUSA}
+
+# Plot
+bar_plotter(dat[Region == "Rest of USA"], xvar = "Size", yvar = "N", xlabel = "Firm Size Category", ylabel = "Firms", fill = "Region", position = "dodge", coord_flip = TRUE)
+```
+
+### Firms by Size (Percent)
+
+```{r Chart_Firms_By_Size_Percent}
+
+# Plot
+bar_plotter(dat, xvar = "Size", yvar = "Pct", xlabel = "Firm Size Category", ylabel = "Percent of Firms", fill = "Region", position = "dodge", coord_flip = TRUE)
+```
+
+### Firms by District (CMAP Model Region)
+
+```{r Chart_Firms_By_District}
+# Organize
+dat <- ScenarioFirms[, .N, keyby = .(Region)]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Firms_by_District.csv"))
+assign("db_tab_firms_district", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat[Region != "Rest of USA"], xvar = "Region", yvar = "N", xlabel = "District", ylabel = "Firms", 
+             coord_flip = TRUE)
+```
+
+### Firms by Industry and Size (CMAP)
+
+```{r Chart_Firms_By_Industry_And_Size_CMAP}
+# Organize
+dat <- ScenarioFirms[TAZ_TYPE=="CMAP MPO Area", .N, keyby = .(Industry = EmpCatGroupedName, Size = esizecat)]
+
+dat <- add_totals(dcast.data.table(dat,
+                     Industry ~ Size,
+                     fun.aggregate = sum,
+                     value.var = "N"))
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Firms_by_Industry_and_Size_CMAP.csv"))
+assign("db_tab_firms_industry_size_cmap", dat, envir = db_inputs)
+
+# Table
+kable(dat, escape=FALSE) %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(ncol(dat), background = "#f2f2f2")
+
+
+```
+
+> Includes firms within the CMAP MPO area only
+
+### Firms by Industry and Size (Rest of Model Region)
+
+```{r Chart_Firms_By_Industry_And_Size_Rest_Region}
+# Organize
+dat <- ScenarioFirms[TAZ_TYPE=="Non-CMAP Part of Model Region", .N, keyby = .(Industry = EmpCatGroupedName, Size = esizecat)]
+
+dat <- add_totals(dcast.data.table(dat,
+                     Industry ~ Size,
+                     fun.aggregate = sum,
+                     value.var = "N"))
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Firms_by_Industry_and_Size_Rest_Region.csv"))
+assign("db_tab_firms_industry_size_rest_region", dat, envir = db_inputs)
+
+# Table
+kable(dat, escape=FALSE) %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(ncol(dat), background = "#f2f2f2")
+
+
+```
+
+> Includes firms within the rest of the model region only
+
+### Firms by Industry and Size (Rest of USA)
+
+```{r Chart_Firms_By_Industry_And_Size_Rest_USA}
+# Organize
+dat <- ScenarioFirms[TAZ_TYPE=="Rest of USA", .N, keyby = .(Industry = EmpCatGroupedName, Size = esizecat)]
+
+dat <- add_totals(dcast.data.table(dat,
+                     Industry ~ Size,
+                     fun.aggregate = sum,
+                     value.var = "N"))
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Firms_by_Industry_and_Size_Rest_USA.csv"))
+assign("db_tab_firms_industry_size_rest_usa", dat, envir = db_inputs)
+
+# Table
+kable(dat, escape=FALSE) %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(ncol(dat), background = "#f2f2f2")
+
+
+```
+
+> Includes firms within the rest of the USA only
+
+### Firms by Industry and District
+
+```{r Chart_Firms_By_Industry_And_District}
+# Organize
+dat <- ScenarioFirms[, .N, keyby = .(Industry = EmpCatGroupedName, Region)]
+
+dat <- add_totals(dcast.data.table(dat,
+                     Industry ~ Region,
+                     fun.aggregate = sum,
+                     value.var = "N"))
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Firms_by_Industry_and_District.csv"))
+assign("db_tab_firms_industry_district", dat, envir = db_inputs)
+
+# Table
+kable(dat, escape=FALSE) %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(ncol(dat), background = "#f2f2f2")
+
+
+```
+
+> Includes firms within the \model region and in the rest of the USA
+
+Employment {data-navmenu="Firm Synthesis Model"}
+============================================
+
+Highlights {data-width=100}
+--------------------------------------------
+
+**Firm Synthesis Model: Employment in the United Stated and within the CMAP Model Region**
+
+Firm synthesis model outputs enumerating employment by location and industry.
+
+### Synthesized Employment (Chicago)
+
+```{r}
+value <- format(ScenarioFirms[TAZ %in% BASE_TAZ_CHICAGO, sum(Employees)], big.mark = ",", trim = TRUE)
+valueBox(value, caption = "Synthesized Employees<br>City of Chicago</br>", icon = "fa-briefcase")
+```
+
+### Synthesized Firms Cook County Outside Chicago
+
+```{r}
+value <- format(ScenarioFirms[TAZ %in% BASE_TAZ_COOK & !TAZ %in% BASE_TAZ_CHICAGO, sum(Employees)], big.mark = ",", trim = TRUE)
+valueBox(value, caption = "Synthesized Employees<br>Cook County (Not Chicago)</br>", icon = "fa-briefcase")
+```
+
+### Synthesized Employment Rest of CMAP MPO Area (Not Cook County)
+
+```{r}
+value <- format(ScenarioFirms[TAZ %in% BASE_TAZ_CMAP & !TAZ %in% BASE_TAZ_COOK, sum(Employees)], big.mark = ",", trim = TRUE)
+valueBox(value, caption = "Synthesized Employees<br>Rest of CMAP MPO Area (Not Cook County)</br>", icon = "fa-briefcase")
+```
+
+### Synthesized Employment (Rest of Model Region)
+
+```{r}
+value <- format(ScenarioFirms[TAZ_TYPE=="Non-CMAP Part of Model Region", sum(Employees)], big.mark = ",", trim = TRUE)
+valueBox(value, caption = "Synthesized Employees<br>Non-CMAP Region</br>", 
+         icon = "fa-briefcase")
+```
+
+### Synthesized Employment (Model Region)
+
+```{r}
+value <- format(ScenarioFirms[TAZ_TYPE %in% c("CMAP MPO Area", "Non-CMAP Part of Model Region"), sum(Employees)], big.mark = ",", trim = TRUE)
+valueBox(value, caption = "Synthesized Employees<br>Model Region</br>", 
+         icon = "fa-briefcase")
+```
+
+### Synthesized Employment (Rest of USA)
+
+```{r}
+value <- format(ScenarioFirms[TAZ_TYPE=="Rest of USA", sum(Employees)], big.mark = ",", trim = TRUE)
+valueBox(value, caption = "Synthesized Employees<br>Rest of USA</br>", 
+         icon = "fa-briefcase")
+```
+
+### Synthesized Employment TOTAL
+
+```{r}
+value <- format(ScenarioFirms[, sum(Employees)], big.mark = ",", trim = TRUE)
+valueBox(value, caption = "Synthesized Employees<br>Total</br>", icon = "fa-briefcase")
+```
+
+Column {data-width=400 .tabset}
+--------------------------------------------
+
+### Employment by Industry
+
+```{r Map_Employment_By_Industry}
+k <- 50
+map <- leaflet(shp, width = "100%") %>%
+  addProviderTiles(map_type, group = "Background Map")
+map <- map %>% addTAZPoints(data = ScenarioFirms[TAZ_TYPE %in% c("CMAP MPO Area", "Non-CMAP Part of Model Region")],
+                            shp = shp,
+                            group = "EmpCatGroupedName", weight = "Employees",
+                            scale.factor = k) %>%
+  addPolygons(data = shp, weight = 0.5,
+              opacity = 0.25, color = "grey",
+              fillOpacity = 0, fillColor = "white") %>%
+  addTAZPolygons()
+map %>% htmlwidgets::onRender(JS(paste0("function(el, x){
+var map = this;
+var corner1 = new L.LatLng(",CMAP_BBOX["ymin"],", ",CMAP_BBOX["xmin"],"),
+    corner2 = new L.LatLng(",CMAP_BBOX["ymax"],", ",CMAP_BBOX["xmax"],"),
+    bounds = new L.LatLngBounds(corner1, corner2);
+map.fitBounds(bounds);
+}")))
+```
+
+>`r if(SCENARIO_DB_FIRMSYN) {paste0("Note: Each data point represents ", comma(k), " employees and precise locations are illustrative as firms are only identified geographically at the TAZ-level.")}`
+
+### Employment by Size
+
+```{r Map_Employment_By_Size}
+k <- 25
+map <- leaflet(shp, width = "100%") %>%
+  addProviderTiles(map_type, group = "Background Map")
+map <- map %>% addTAZPoints(data = ScenarioFirms[TAZ_TYPE %in% c("CMAP MPO Area", "Non-CMAP Part of Model Region")],
+                            shp = shp,
+                            group = "esizecat", weight = "Employees",
+                            scale.factor = k) %>%
+  addPolygons(data = shp, weight = 0.5,
+              opacity = 0.25, color = "grey",
+              fillOpacity = 0, fillColor = "white") %>%
+  addTAZPolygons()
+map %>% htmlwidgets::onRender(JS(paste0("function(el, x){
+var map = this;
+var corner1 = new L.LatLng(",CMAP_BBOX["ymin"],", ",CMAP_BBOX["xmin"],"),
+    corner2 = new L.LatLng(",CMAP_BBOX["ymax"],", ",CMAP_BBOX["xmax"],"),
+    bounds = new L.LatLngBounds(corner1, corner2);
+map.fitBounds(bounds);
+}")))
+```
+
+>`r if(SCENARIO_DB_FIRMSYN) {paste0("Note: Each data point represents ", comma(k), " employees and precise locations are illustrative as firms are only identified geographically at the TAZ-level.")}`
+
+Column {data-width=500 .tabset}
+--------------------------------------------
+
+### Employment by Industry (CMAP Model Region)
+
+```{r Chart_Employment_By_Industry_1}
+# Organize
+dat <- ScenarioFirms[, .(Employees = sum(Employees)), keyby = .(Region = TAZ_TYPE, Industry = EmpCatGroupedName)]
+dat[, Pct := Employees/sum(Employees), by = Region]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Employees_by_Industry.csv"))
+assign("db_tab_emp_industry", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat[Region != "Rest of USA"], xvar = "Industry", yvar = "Employees",  fill = "Region", position = "dodge", coord_flip = TRUE)
+
+```
+
+### Employment by Industry (Rest of USA)
+
+```{r Chart_Employment_By_Industry_1_RofUSA}
+
+# Plot
+bar_plotter(dat[Region == "Rest of USA"], xvar = "Industry", yvar = "Employees",  fill = "Region", position = "dodge", coord_flip = TRUE)
+
+```
+
+### Employment by Industry (Percent)
+
+```{r Chart_Employment_By_Industry_1_Percent}
+
+# Plot
+bar_plotter(dat, xvar = "Industry", yvar = "Pct", ylabel = "Percent of Employees",  fill = "Region", position = "dodge", coord_flip = TRUE)
+
+```
+
+### Employment by Size (CMAP Model Region)
+
+```{r Chart_Employment_By_Size_1}
+# Organize
+dat <- ScenarioFirms[, .(Employees = sum(Employees)), keyby = .(Region = TAZ_TYPE, Size = esizecat)]
+dat[, Pct := Employees/sum(Employees), by = Region]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Employees_by_Size.csv"))
+assign("db_tab_emp_size", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat[Region != "Rest of USA"], xvar = "Size", yvar = "Employees", xlabel = "Firm Size Category", 
+            fill = "Region", position = "dodge", coord_flip = TRUE)
+
+```
+
+### Employment by Size (Rest of USA)
+
+```{r Chart_Employment_By_Size_1_RofUSA}
+
+# Plot
+bar_plotter(dat[Region == "Rest of USA"], xvar = "Size", yvar = "Employees", xlabel = "Firm Size Category", 
+            fill = "Region", position = "dodge", coord_flip = TRUE)
+
+```
+
+### Employment by Size (Percent)
+
+```{r Chart_Employment_By_Size_1_Percent}
+
+# Plot
+bar_plotter(dat, xvar = "Size", yvar = "Pct", ylabel = "Percent of Employees", xlabel = "Firm Size Category", 
+            fill = "Region", position = "dodge", coord_flip = TRUE)
+
+```
+
+### Employment by District
+
+```{r Chart_Employment_By_District_1}
+# Organize
+dat <- ScenarioFirms[, .(Employees = sum(Employees)), keyby = .(Region)]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Employees_by_District.csv"))
+assign("db_tab_emp_district", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat[Region != "Rest of USA"], xvar = "Region", yvar = "Employees", xlabel = "District", coord_flip = TRUE)
+```
+
+### Employment by Industry and Size (CMAP)
+
+```{r Chart_Employment_By_Industry_And_Size_CMAP_1}
+# Organize
+dat <- ScenarioFirms[TAZ_TYPE=="CMAP MPO Area", .(Employees = sum(Employees)), keyby = .(Industry = EmpCatGroupedName, Size = esizecat)]
+
+dat <- add_totals(dcast.data.table(dat,
+                     Industry ~ Size,
+                     fun.aggregate = sum,
+                     value.var = "Employees"))
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Employees_by_Industry_and_Size_CMAP.csv"))
+assign("db_tab_emp_industry_size_cmap", dat, envir = db_inputs)
+
+# Table
+kable(dat, escape=FALSE) %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(ncol(dat), background = "#f2f2f2")
+
+
+```
+
+> Includes employment within the CMAP MPO region only
+
+### Employment by Industry and Size (Rest of Model Region)
+
+```{r Chart_Employment_By_Industry_And_Size_Rest_Region_1}
+# Organize
+dat <- ScenarioFirms[TAZ_TYPE=="Non-CMAP Part of Model Region", .(Employees = sum(Employees)), keyby = .(Industry = EmpCatGroupedName, Size = esizecat)]
+
+dat <- add_totals(dcast.data.table(dat,
+                     Industry ~ Size,
+                     fun.aggregate = sum,
+                     value.var = "Employees"))
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Employees_by_Industry_and_Size_Rest_Region.csv"))
+assign("db_tab_emp_industry_size_rest_region", dat, envir = db_inputs)
+
+# Table
+kable(dat, escape=FALSE) %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(ncol(dat), background = "#f2f2f2")
+
+
+```
+
+> Includes employment within the Rest of Model Region only
+
+### Employment by Industry and Size (Rest of USA)
+
+```{r Chart_Employment_By_Industry_And_Size_Rest_USA_1}
+# Organize
+dat <- ScenarioFirms[TAZ_TYPE=="Rest of USA", .(Employees = sum(Employees)), keyby = .(Industry = EmpCatGroupedName, Size = esizecat)]
+
+dat <- add_totals(dcast.data.table(dat,
+                     Industry ~ Size,
+                     fun.aggregate = sum,
+                     value.var = "Employees"))
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Employees_by_Industry_and_Size_Rest_USA.csv"))
+assign("db_tab_emp_industry_size_rest_usa", dat, envir = db_inputs)
+
+# Table
+kable(dat, escape=FALSE) %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(ncol(dat), background = "#f2f2f2")
+
+
+```
+
+> Includes employment within the Rest of USA only
+
+### Employment by Industry and District
+
+```{r Chart_Employment_By_Industry_And_District_1}
+# Organize
+dat <- ScenarioFirms[, .(Employees = sum(Employees)), keyby = .(Industry = EmpCatGroupedName, Region)]
+
+dat <- add_totals(dcast.data.table(dat,
+                     Industry ~ Region,
+                     fun.aggregate = sum,
+                     value.var = "Employees"))
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Employees_by_Industry_and_District.csv"))
+assign("db_tab_emp_industry_district", dat, envir = db_inputs)
+
+# Table
+kable(dat, escape=FALSE) %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(ncol(dat), background = "#f2f2f2")
+
+
+```
+
+> Includes employment within the whole model region and the rest of USA
+
+Production {data-navmenu="Firm Synthesis Model"}
+============================================
+
+Highlights {data-width=100}
+--------------------------------------------
+
+**Firm Synthesis Model: Production by Global and United States Businesses, and those within the CMAP Model Region**
+
+Firm synthesis model outputs simulating production of commodities by location and industry.
+
+### Producers
+
+```{r Number_Producers_ValueBox}
+valueBox(format(firm_sim_summary$firms_sum$producers, big.mark = ","), "Number of Producers", icon = "fa-industry")
+```
+
+### Production Capacity
+
+```{r Capacity_Producers_ValueBox}
+valueBox(format(firm_sim_summary$firms_sum$producers_cap, big.mark = ",", scientific = FALSE), "Capacity at Producers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+### Production Capacity (Domestic, not including Wholesalers)
+
+```{r Capacity_Producers_Domestic_ValueBox}
+valueBox(format(producers[ProdType == 1, sum(OutputCapacityTons)], big.mark = ",", scientific = FALSE), "Capacity at Domestic Producers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+### Production Capacity (Foreign, producing imports)
+
+```{r Capacity_Producers_Foreign_ValueBox}
+valueBox(format(producers[ProdType == 2, sum(OutputCapacityTons)], big.mark = ",", scientific = FALSE), "Capacity at Foreign Producers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+### Production Capacity (Domestic Wholesalers)
+
+```{r Capacity_Producers_Wholesale_ValueBox}
+valueBox(format(producers[ProdType == 3, sum(OutputCapacityTons)], big.mark = ",", scientific = FALSE), "Capacity at Domestic Wholesalers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+Column {data-width=400 .tabset}
+--------------------------------------------
+
+###  Production by Commodity
+
+```{r production_commodity_barcharts}
+
+# Initial commodity table rolled up from producers and labelled
+# for all of the charts and tables used in this column
+# db_tab_production_commodity
+# db_tab_production_commodity_dom
+# db_tab_production_commodity_foreign
+# db_tab_production_commodity_wholesale
+# db_tab_production_commodity_region
+# db_tab_consumption_commodity_census_region (4 charts - MW, NE, S, W)
+
+producers.commodity <- merge(producers[, .(Capacity = sum(OutputCapacityTons)), 
+                                       keyby = .(Commodity_SCTG, ProdType, Zone, FAFZONE)],
+                             c_sctg[,.(Commodity_SCTG, 
+                                       Commodity = Commodity_SCTG_desc_short,
+                                       Commodity_SCTG_Group, 
+                                       Commodity_Group = Commodity_SCTG_Group_label)],
+                             by = "Commodity_SCTG",
+                             all.x = TRUE)
+
+producers.commodity[, Type := factor(ProdType, labels = c("Domestic", "Foreign", "Wholesale"))]
+producers.commodity[TAZ_System,
+    REGION := i.REGION,
+    on = "FAFZONE"]
+assign("db_tab_production_commodity_type_zone_fafzone", 
+       producers.commodity, envir = db_inputs)
+
+# Organize
+dat <- producers.commodity[, .(Capacity = sum(Capacity)), 
+                           by = .(Commodity_Group, Type)]
+dat[, Commodity_Group := factor(Commodity_Group, levels = unique(dat[, .(Capacity = sum(Capacity)), by = Commodity_Group][order(Capacity)]$Commodity_Group))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Production_by_Commodity_Group.csv"))
+assign("db_tab_production_commodity_group", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Commodity_Group", yvar = "Capacity", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+```
+
+###  Production by Commodity (Domestic)
+
+```{r production_domestic_commodity_barcharts}
+
+# Organize
+dat <- producers.commodity[ProdType == 1, .(Capacity = sum(Capacity)), 
+                           by = .(Commodity_Group)][order(Capacity)]
+dat[, Commodity_Group := factor(Commodity_Group, levels = unique(Commodity_Group))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Production_by_Commodity_Group_ Domestic.csv"))
+assign("db_tab_production_commodity_group_dom", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Commodity_Group", yvar = "Capacity", xrotate = TRUE, 
+            position = "stack", coord_flip = TRUE)
+
+```
+
+###  Production by Commodity (Foreign)
+
+```{r production_foreign_commodity_barcharts}
+
+# Organize
+dat <- producers.commodity[ProdType == 2, .(Capacity = sum(Capacity)), 
+                           by = .(Commodity_Group)][order(Capacity)]
+dat[, Commodity_Group := factor(Commodity_Group, levels = unique(Commodity_Group))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Production_by_Commodity_Group_ Foreign.csv"))
+assign("db_tab_production_commodity_group_foreign", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Commodity_Group", yvar = "Capacity", xrotate = TRUE, 
+            position = "stack", coord_flip = TRUE)
+
+```
+
+###  Production by Commodity (Wholesale)
+
+```{r production_wholesale_commodity_barcharts}
+
+# Organize
+dat <- producers.commodity[ProdType == 3, .(Capacity = sum(Capacity)), 
+                           by = .(Commodity_Group)][order(Capacity)]
+dat[, Commodity_Group := factor(Commodity_Group, levels = unique(Commodity_Group))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Production_by_Commodity_Group_ Wholesale.csv"))
+assign("db_tab_production_commodity_group_wholesale", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Commodity_Group", yvar = "Capacity", xrotate = TRUE, 
+            position = "stack", coord_flip = TRUE)
+
+```
+
+### Production by Commodity and Type (Table)
+
+```{r production_commodity_type_table}
+# Organize
+dat <- producers.commodity[, .(Capacity = sum(Capacity)), 
+                           keyby = .(Commodity_SCTG, Commodity, Commodity_Group, Type)]
+
+dat <- add_totals(dcast.data.table(dat,
+                     Commodity_SCTG + Commodity + Commodity_Group ~ Type,
+                     fun.aggregate = sum,
+                     value.var = "Capacity"),
+                  idcols = 3L)
+
+cols <- names(dat)[4:ncol(dat)]
+dat[, (cols) := lapply(.SD, format, digits = 1, big.mark = ",", scientific = FALSE), .SDcols = cols]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Production_by_Commodity_Type.csv"))
+assign("db_tab_production_commodity_type", dat, envir = db_inputs)
+
+# Table
+kable(dat, escape=FALSE,align = "lllrrrr") %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(ncol(dat), background = "#f2f2f2")
+
+
+```
+
+###  Production by Commodity (Chicago Region)
+
+```{r production_commodity_region_barcharts}
+
+# Organize
+dat <- producers.commodity[Zone < 150, .(Capacity = sum(Capacity)), 
+                           by = .(Commodity_Group, Type)]
+dat[, Commodity_Group := factor(Commodity_Group, levels = unique(dat[, .(Capacity = sum(Capacity)), by = Commodity_Group][order(Capacity)]$Commodity_Group))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Production_by_Commodity_Group_Region.csv"))
+assign("db_tab_production_commodity_group_region", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Commodity_Group", yvar = "Capacity", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+```
+
+###  Production by Commodity (MidWest)
+
+```{r production_commodity_midwest_barcharts}
+
+# Organize
+dat <- producers.commodity[, .(Capacity = sum(Capacity)), 
+                           by = .(Commodity_Group, Type, REGION)]
+dat.region <- dat[REGION == "MidWest"]
+dat.region[, Commodity_Group := factor(Commodity_Group, levels = unique(dat.region[, .(Capacity = sum(Capacity)), by = Commodity_Group][order(Capacity)]$Commodity_Group))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Production_by_Commodity_Group_Census_Region.csv"))
+assign("db_tab_production_commodity_census_region", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat.region, xvar = "Commodity_Group", yvar = "Capacity", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+```
+
+###  Production by Commodity (NorthEast)
+
+```{r production_commodity_northeast_barcharts}
+
+# Organize
+dat.region <- dat[REGION == "NorthEast"]
+dat.region[, Commodity_Group := factor(Commodity_Group, levels = unique(dat.region[, .(Capacity = sum(Capacity)), by = Commodity_Group][order(Capacity)]$Commodity_Group))]
+
+# Plot
+bar_plotter(dat.region, xvar = "Commodity_Group", yvar = "Capacity", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+```
+
+###  Production by Commodity (South)
+
+```{r production_commodity_south_barcharts}
+
+# Organize
+dat.region <- dat[REGION == "South"]
+dat.region[, Commodity_Group := factor(Commodity_Group, levels = unique(dat.region[, .(Capacity = sum(Capacity)), by = Commodity_Group][order(Capacity)]$Commodity_Group))]
+
+# Plot
+bar_plotter(dat.region, xvar = "Commodity_Group", yvar = "Capacity", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+```
+
+###  Production by Commodity (West)
+
+```{r production_commodity_west_barcharts}
+
+# Organize
+dat.region <- dat[REGION == "West"]
+dat.region[, Commodity_Group := factor(Commodity_Group, levels = unique(dat.region[, .(Capacity = sum(Capacity)), by = Commodity_Group][order(Capacity)]$Commodity_Group))]
+
+# Plot
+bar_plotter(dat.region, xvar = "Commodity_Group", yvar = "Capacity", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+```
+
+### Production by Commodity and Region (Table)
+
+```{r production_commodity_Region_table}
+
+# Organize
+dat <- add_totals(producers.commodity[Zone < 150, .(ChicagoRegion = sum(Capacity)), 
+                           keyby = .(Commodity_SCTG, Commodity, Commodity_Group)],
+                  rowtotal = FALSE,
+                  idcols = 3L)
+dat.region <- producers.commodity[, .(Capacity = sum(Capacity)), 
+                           keyby = .(Commodity_SCTG, Commodity, Commodity_Group, REGION)]
+dat.region[, REGION := factor(REGION, levels = c("MidWest","NorthEast","South","West","Foreign"))]
+dat.region <- add_totals(dcast.data.table(dat.region,
+                     Commodity_SCTG + Commodity + Commodity_Group ~ REGION,
+                     fun.aggregate = sum,
+                     value.var = "Capacity"),
+                     idcols = 3L)
+dat <- merge(dat, dat.region,
+             by = c("Commodity_SCTG", "Commodity", "Commodity_Group"),
+             all = TRUE, sort = FALSE)
+
+cols <- names(dat)[4:ncol(dat)]
+dat[, (cols) := lapply(.SD, format, digits = 1, big.mark = ",", scientific = FALSE), .SDcols = cols]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Production_by_Commodity_Region_Table.csv"))
+assign("db_tab_production_commodity_region_census_region", dat, envir = db_inputs)
+
+# Table
+kable(dat, escape=FALSE,align = "lllrrrrr") %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(ncol(dat), background = "#f2f2f2")
+
+```
+
+> NOTE: The MidWest Census Region includes the Chicago Region
+
+Column {data-width=400 .tabset}
+--------------------------------------------
+
+###  Production by Industry
+
+```{r production_industry_barcharts}
+
+# Initial industry table rolled up from producers and labelled
+# for all of the charts and tables used in this column
+
+producers.industry <- producers[, .(Capacity = sum(OutputCapacityTons)), 
+                                       keyby = .(EmpCatName, ProdType, Zone, FAFZONE)]
+
+producers.industry[c_n2_empcats,
+    Industry := i.EmpCatLabel,
+    on = "EmpCatName"]
+producers.industry[, Type := factor(ProdType, labels = c("Domestic", "Foreign", "Wholesale"))]
+producers.industry[TAZ_System,
+    REGION := i.REGION,
+    on = "FAFZONE"]
+assign("db_tab_production_industry_type_zone_fafzone", 
+       producers.industry, envir = db_inputs)
+
+# Organize
+dat <- producers.industry[, .(Capacity = sum(Capacity)),
+                          by = .(Industry, Type)]
+dat[, Industry := factor(Industry, levels = unique(dat[, .(Capacity = sum(Capacity)), by = Industry][order(Capacity)]$Industry))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Production_by_Industry.csv"))
+assign("db_tab_production_industry", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Industry", yvar = "Capacity", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+```
+
+###  Production by Industry (Chicago Region)
+
+```{r production_industry_region_barcharts}
+
+# Organize
+dat <- producers.industry[Zone < 150, .(Capacity = sum(Capacity)),
+                          by = .(Industry, Type)]
+dat[, Industry := factor(Industry, levels = unique(dat[, .(Capacity = sum(Capacity)), by = Industry][order(Capacity)]$Industry))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Production_by_Industry_Region.csv"))
+assign("db_tab_production_industry_region", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Industry", yvar = "Capacity", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+```
+
+###  Production by Industry (Census Region)
+
+```{r production_industry_census_barcharts}
+
+# Organize
+dat <- producers.industry[, .(Capacity = sum(Capacity)),
+                          by = .(Industry, Type, REGION)]
+dat[, Industry := factor(Industry, levels = unique(dat[, .(Capacity = sum(Capacity)), by = Industry][order(Capacity)]$Industry))]
+dat[, REGION := factor(REGION, levels = c("MidWest","NorthEast","South","West","Foreign"))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Production_by_Industry_Census_Region.csv"))
+assign("db_tab_production_industry_census_region", dat, envir = db_inputs)
+
+# Plot
+p <- ggplot(data = dat, aes(Industry, Capacity, fill = Type)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 3, 4),],maxColorValue = 255), labels = c("Domestic", "Foreign", "Wholesale")) +
+  xlab("Industry") +
+  scale_y_continuous(name = "Capacity") +
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  facet_wrap(~REGION, ncol = 2) +
+  coord_flip()
+p
+
+```
+
+### Production by Industry and Region (Table)
+
+```{r production_Industry_Region_table}
+
+# Organize
+dat <- add_totals(producers.industry[Zone < 150, .(ChicagoRegion = sum(Capacity)),
+                          by = .(Industry)],
+                  rowtotal = FALSE)
+dat.region <- producers.industry[, .(Capacity = sum(Capacity)), 
+                           keyby = .(Industry, REGION)]
+dat.region[, REGION := factor(REGION, levels = c("MidWest","NorthEast","South","West","Foreign"))]
+dat.region <- add_totals(dcast.data.table(dat.region,
+                     Industry ~ REGION,
+                     fun.aggregate = sum,
+                     value.var = "Capacity"))
+dat <- merge(dat, dat.region,
+             by = c("Industry"),
+             all = TRUE, sort = FALSE)
+
+cols <- names(dat)[2:ncol(dat)]
+dat[, (cols) := lapply(.SD, format, digits = 1, big.mark = ",", scientific = FALSE), .SDcols = cols]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Production_by_Industry_Region_Table.csv"))
+assign("db_tab_production_industry_region_census_region", dat, envir = db_inputs)
+
+# Table
+kable(dat, escape=FALSE,align = "lrrrrrrr") %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(ncol(dat), background = "#f2f2f2")
+
+```
+
+> NOTE: The MidWest Census Region includes the Chicago Region
+
+Consumption {data-navmenu="Firm Synthesis Model"}
+============================================
+
+Highlights {data-width=100}
+--------------------------------------------
+
+**Firm Synthesis Model: Consumption by Global and United States Businesses, and those within the CMAP Model Region**
+
+Firm synthesis model outputs simulating consumption of commodities by location and industry.
+
+### Consumers
+
+```{r Number_Consumers_ValueBox}
+valueBox(format(firm_sim_summary$firms_sum$consumers, big.mark = ","), "Number of Consumers", icon = "fa-industry")
+```
+
+### Consumption Requirements
+
+```{r Requirements_Consumers_ValueBox}
+valueBox(format(sum(firm_sim_summary$consumers_summary$Requirements), big.mark = ",", scientific = FALSE), "Requirements of Consumers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+### Consumption Requirements (Domestic, not including Wholesalers)
+
+```{r Requirements_Consumers_Domestic_ValueBox}
+valueBox(format(firm_sim_summary$consumers_summary[ConsType == 1, sum(Requirements)], big.mark = ",", scientific = FALSE), "Requirements at Domestic Consumers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+### Consumption Requirements (Foreign, consuming exports)
+
+```{r Requirements_Consumers_Foreign_ValueBox}
+valueBox(format(firm_sim_summary$consumers_summary[ConsType == 2, sum(Requirements)], big.mark = ",", scientific = FALSE), "Requirements at Foreign Consumers (Tons/Year)", icon = "fa-balance-scale")
+```
+
+### Consumption Requirements (Simulated in PMG)
+
+```{r Requirements_Consumers_Simulated_PMG_ValueBox}
+valueBox(format(firm_sim_summary$consumers_summary[ConsSegment == "Simulated in PMG", sum(Requirements)], big.mark = ",", scientific = FALSE), "Requirements Simulated in PMG (Tons/Year)", icon = "fa-balance-scale")
+```
+
+### Consumption Requirements (Non-Simulated Consumption)
+
+```{r Requirements_Consumers_Non_Simulated_ValueBox}
+valueBox(format(firm_sim_summary$consumers_summary[ConsSegment == "Non-Simulated Consumption", sum(Requirements)], big.mark = ",", scientific = FALSE), "Non-Simulated Consumption Requirements (Tons/Year)", icon = "fa-balance-scale")
+```
+
+Column {data-width=400 .tabset}
+--------------------------------------------
+
+###  Consumption by Commodity
+
+```{r consumption_commodity_barcharts}
+
+# Initial commodity table rolled up from producers and labelled
+# for all of the charts and tables used in this column
+
+consumers.commodity <- merge(firm_sim_summary$consumers_summary[, .(Requirements = sum(Requirements)), 
+                                       keyby = .(Commodity_SCTG, ConsType, Zone, FAFZONE)],
+                             c_sctg[,.(Commodity_SCTG, 
+                                       Commodity = Commodity_SCTG_desc_short,
+                                       Commodity_SCTG_Group, 
+                                       Commodity_Group = Commodity_SCTG_Group_label)],
+                             by = "Commodity_SCTG",
+                             all.x = TRUE)
+
+consumers.commodity[, Type := factor(ConsType, labels = c("Domestic", "Foreign"))]
+consumers.commodity[TAZ_System,
+    REGION := i.REGION,
+    on = "FAFZONE"]
+assign("db_tab_consumption_commodity_type_zone_fafzone", 
+       consumers.commodity, envir = db_inputs)
+
+# Organize
+dat <- consumers.commodity[, .(Requirements = sum(Requirements)), 
+                           by = .(Commodity_Group, Type)]
+dat[, Commodity_Group := factor(Commodity_Group, levels = unique(dat[, .(Requirements = sum(Requirements)), by = Commodity_Group][order(Requirements)]$Commodity_Group))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Consumption_by_Commodity_Group.csv"))
+assign("db_tab_consumption_commodity_group", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Commodity_Group", yvar = "Requirements", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+```
+
+###  Consumption by Commodity (Domestic)
+
+```{r consumption_domestic_commodity_barcharts}
+
+# Organize
+dat <- consumers.commodity[ConsType == 1, .(Requirements = sum(Requirements)), 
+                           by = .(Commodity_Group)][order(Requirements)]
+dat[, Commodity_Group := factor(Commodity_Group, levels = unique(Commodity_Group))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Consumption_by_Commodity_Group_Domestic.csv"))
+assign("db_tab_consumption_commodity_group_domestic", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Commodity_Group", yvar = "Requirements", xrotate = TRUE, position = "stack", coord_flip = TRUE)
+
+```
+
+###  Consumption by Commodity (Foreign)
+
+```{r consumption_foreign_commodity_barcharts}
+
+# Organize
+dat <- consumers.commodity[ConsType == 2, .(Requirements = sum(Requirements)), 
+                           by = .(Commodity_Group)][order(Requirements)]
+dat[, Commodity_Group := factor(Commodity_Group, levels = unique(Commodity_Group))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Consumption_by_Commodity_Group_Foreign.csv"))
+assign("db_tab_consumption_commodity_group_foreign", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Commodity_Group", yvar = "Requirements", xrotate = TRUE, position = "stack", coord_flip = TRUE)
+
+```
+
+###  Consumption by Commodity (Chicago Region)
+
+```{r consumption_commodity_region_barcharts}
+
+# Organize
+dat <- consumers.commodity[Zone < 150, .(Requirements = sum(Requirements)), 
+                           by = .(Commodity_Group, Type)]
+dat[, Commodity_Group := factor(Commodity_Group, levels = unique(dat[, .(Requirements = sum(Requirements)), by = Commodity_Group][order(Requirements)]$Commodity_Group))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Consumption_by_Commodity_Group_Region.csv"))
+assign("db_tab_consumption_commodity_group_region", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Commodity_Group", yvar = "Requirements", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+```
+
+###  Consumption by Commodity (MidWest)
+
+```{r consumption_commodity_midwest_barcharts}
+
+# Organize
+dat <- consumers.commodity[, .(Requirements = sum(Requirements)), 
+                           by = .(Commodity_Group, Type, REGION)]
+dat.region <- dat[REGION == "MidWest"]
+dat.region[, Commodity_Group := factor(Commodity_Group, levels = unique(dat.region[, .(Requirements = sum(Requirements)), by = Commodity_Group][order(Requirements)]$Commodity_Group))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Consumption_by_Commodity_Group_Census_Region.csv"))
+assign("db_tab_consumption_commodity_Group_census_region", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat.region, xvar = "Commodity_Group", yvar = "Requirements", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+```
+
+###  Consumption by Commodity (NorthEast)
+
+```{r consumption_commodity_northeast_barcharts}
+
+# Organize
+dat.region <- dat[REGION == "NorthEast"]
+dat.region[, Commodity_Group := factor(Commodity_Group, levels = unique(dat.region[, .(Requirements = sum(Requirements)), by = Commodity_Group][order(Requirements)]$Commodity_Group))]
+
+# Plot
+bar_plotter(dat.region, xvar = "Commodity_Group", yvar = "Requirements", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+```
+
+###  Consumption by Commodity (South)
+
+```{r consumption_commodity_south_barcharts}
+
+# Organize
+dat.region <- dat[REGION == "South"]
+dat.region[, Commodity_Group := factor(Commodity_Group, levels = unique(dat.region[, .(Requirements = sum(Requirements)), by = Commodity_Group][order(Requirements)]$Commodity_Group))]
+
+# Plot
+bar_plotter(dat.region, xvar = "Commodity_Group", yvar = "Requirements", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+
+```
+
+###  Consumption by Commodity (West)
+
+```{r consumption_commodity_west_barcharts}
+
+# Organize
+dat.region <- dat[REGION == "West"]
+dat.region[, Commodity_Group := factor(Commodity_Group, levels = unique(dat.region[, .(Requirements = sum(Requirements)), by = Commodity_Group][order(Requirements)]$Commodity_Group))]
+
+# Plot
+bar_plotter(dat.region, xvar = "Commodity_Group", yvar = "Requirements", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+```
+
+### Consumption by Commodity and Region (Table)
+
+```{r consumption_commodity_Region_table}
+
+# Organize
+dat <- add_totals(consumers.commodity[Zone < 150, .(ChicagoRegion = sum(Requirements)), 
+                           keyby = .(Commodity_SCTG, Commodity, Commodity_Group)],
+                  rowtotal = FALSE,
+                  idcols = 3L)
+dat.region <- consumers.commodity[, .(Requirements = sum(Requirements)), 
+                           keyby = .(Commodity_SCTG, Commodity, Commodity_Group, REGION)]
+dat.region[, REGION := factor(REGION, levels = c("MidWest","NorthEast","South","West","Foreign"))]
+dat.region <- add_totals(dcast.data.table(dat.region,
+                     Commodity_SCTG + Commodity + Commodity_Group ~ REGION,
+                     fun.aggregate = sum,
+                     value.var = "Requirements"),
+                     idcols = 3L)
+dat <- merge(dat, dat.region,
+             by = c("Commodity_SCTG", "Commodity", "Commodity_Group"),
+             all = TRUE, sort = FALSE)
+
+cols <- names(dat)[4:ncol(dat)]
+dat[, (cols) := lapply(.SD, format, digits = 1, big.mark = ",", scientific = FALSE), .SDcols = cols]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Consumption_by_Commodity_Region_Table.csv"))
+assign("db_tab_consumption_commodity_region_census_region", dat, envir = db_inputs)
+
+# Table
+kable(dat, escape=FALSE,align = "lllrrrrr") %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(ncol(dat), background = "#f2f2f2")
+
+```
+
+> NOTE: The MidWest Census Region includes the Chicago Region
+
+### Comparison of Production and Consumption by Commodity
+
+```{r production_consumption_commodity_barcharts}
+
+# Organize
+dat.cons <- consumers.commodity[, .(Annual_Quantity = sum(Requirements)), 
+                           by = .(Commodity_Group)][, Type := "Consumption"]
+dat.prod <- producers.commodity[, .(Annual_Quantity = sum(Capacity)), 
+                           by = .(Commodity_Group)][, Type := "Production"]
+dat <- rbind(dat.cons, dat.prod)
+
+dat[, Commodity_Group := factor(Commodity_Group, levels = unique(dat[, .(Annual_Quantity = sum(Annual_Quantity)), by = Commodity_Group][order(Annual_Quantity)]$Commodity_Group))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Production_Consumption_by_Commodity_Group.csv"))
+assign("db_tab_production_consumption_commodity_group", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Commodity_Group", yvar = "Annual_Quantity", xrotate = TRUE, fill = "Type", position = "dodge", coord_flip = TRUE)
+
+```
+
+Column {data-width=400 .tabset}
+--------------------------------------------
+
+###  Consumption by Industry
+
+```{r consumption_industry_barcharts}
+
+# Initial industry table rolled up from consumers and labelled
+# for all of the charts and tables used in this column
+
+consumers.industry <- firm_sim_summary$consumers_summary[, .(Requirements = sum(Requirements)), 
+                                       keyby = .(EmpCatName, ConsType, Zone, FAFZONE)]
+consumers.industry[c_n2_empcats,
+    Industry := i.EmpCatLabel,
+    on = "EmpCatName"]
+consumers.industry[, Type := factor(ConsType, labels = c("Domestic", "Foreign"))]
+consumers.industry[TAZ_System,
+    REGION := i.REGION,
+    on = "FAFZONE"]
+assign("db_tab_consumption_industry_type_zone_fafzone", 
+       producers.industry, envir = db_inputs)
+
+# Organize
+dat <- consumers.industry[, .(Requirements = sum(Requirements)),
+                 keyby = .(Industry, Type)]
+dat[, Industry := factor(Industry, levels = unique(dat[, .(Requirements = sum(Requirements)), by = Industry][order(Requirements)]$Industry))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Consumption_by_Industry.csv"))
+assign("db_tab_consumption_industry", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Industry", yvar = "Requirements", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+```
+
+###  Consumption by Industry (Chicago Region)
+
+```{r consumption_industry_region_barcharts}
+
+# Organize
+dat <- consumers.industry[Zone < 150, .(Requirements = sum(Requirements)),
+                 keyby = .(Industry, Type)]
+dat[, Industry := factor(Industry, levels = unique(dat[, .(Requirements = sum(Requirements)), by = Industry][order(Requirements)]$Industry))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Consumption_by_Industry_Region.csv"))
+assign("db_tab_consumption_industry_region", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Industry", yvar = "Requirements", xrotate = TRUE, fill = "Type", position = "stack", coord_flip = TRUE)
+
+```
+
+###  Consumption by Industry (Census Region)
+
+```{r consumption_industry_census_barcharts, fig.height=10}
+
+# Organize
+dat <- consumers.industry[, .(Requirements = sum(Requirements)),
+                          by = .(Industry, Type, REGION)]
+dat[, Industry := factor(Industry, levels = unique(dat[, .(Requirements = sum(Requirements)), by = Industry][order(Requirements)]$Industry))]
+dat[, REGION := factor(REGION, levels = c("MidWest","NorthEast","South","West","Foreign"))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Consumption_by_Industry_Census_Region.csv"))
+assign("db_tab_consumption_industry_census_region", dat, envir = db_inputs)
+
+# Plot
+p <- ggplot(data = dat, aes(Industry, Requirements, fill = Type)) +
+  geom_bar(stat = "identity", position = "stack") +
+  scale_fill_manual("Type", values = rgb(rsgcolordf[c(2, 3, 4),],maxColorValue = 255), labels = c("Domestic", "Foreign")) +
+  xlab("Industry") +
+  scale_y_continuous(name = "Requirements") +
+  theme(axis.ticks = element_blank(), legend.position="bottom") +
+  facet_wrap(~REGION, ncol = 2) +
+  coord_flip()
+p
+
+```
+
+### Consumption by Industry and Region (Table)
+
+```{r consumption_Industry_Region_table}
+
+# Organize
+dat <- add_totals(consumers.industry[Zone < 150, .(ChicagoRegion = sum(Requirements)),
+                          by = .(Industry)],
+                  rowtotal = FALSE)
+dat.region <- consumers.industry[, .(Requirements = sum(Requirements)), 
+                           keyby = .(Industry, REGION)]
+dat.region[, REGION := factor(REGION, levels = c("MidWest","NorthEast","South","West","Foreign"))]
+dat.region <- add_totals(dcast.data.table(dat.region,
+                     Industry ~ REGION,
+                     fun.aggregate = sum,
+                     value.var = "Requirements"))
+dat <- merge(dat, dat.region,
+             by = c("Industry"),
+             all = TRUE, sort = FALSE)
+
+cols <- names(dat)[2:ncol(dat)]
+dat[, (cols) := lapply(.SD, format, digits = 1, big.mark = ",", scientific = FALSE), .SDcols = cols]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Consumption_by_Industry_Region_Table.csv"))
+assign("db_tab_consumption_industry_region_census_region", dat, envir = db_inputs)
+
+# Table
+kable(dat, escape=FALSE,align = "lrrrrrrr") %>%
+  kable_styling(fixed_thead = TRUE, bootstrap_options = c("condensed")) %>%
+  row_spec(nrow(dat), background = "#f2f2f2") %>%
+  column_spec(ncol(dat), background = "#f2f2f2")
+
+```
+
+> NOTE: The MidWest Census Region includes the Chicago Region
+
+### Comparison of Production and Consumption by Industry
+
+```{r production_consumption_industry_barcharts}
+
+# Organize
+dat.cons <- consumers.industry[, .(Annual_Quantity = sum(Requirements)), 
+                           by = .(Industry)][, Type := "Consumption"]
+dat.prod <- producers.industry[, .(Annual_Quantity = sum(Capacity)), 
+                           by = .(Industry)][, Type := "Production"]
+dat <- rbind(dat.cons, dat.prod)
+
+dat[, Industry := factor(Industry, levels = unique(dat[, .(Annual_Quantity = sum(Annual_Quantity)), by = Industry][order(Annual_Quantity)]$Industry))]
+
+# Save
+fwrite(dat, file = file.path(SCENARIO_OUTPUT_PATH, "Production_Consumption_by_Industry.csv"))
+assign("db_tab_production_consumption_industry", dat, envir = db_inputs)
+
+# Plot
+bar_plotter(dat, xvar = "Industry", yvar = "Annual_Quantity", xrotate = TRUE, fill = "Type", position = "dodge", position.dodge = TRUE, coord_flip = TRUE)
+
+```
+
+<!-- ```{r section_build_firm_sim_cal, results='asis', eval=SCENARIO_DB_CALIBRATION} -->
+<!-- section_firm_sim_cal <- knitr::knit_child('section_firm_sim_cal.Rmd', -->
+<!--                               envir = environment(), -->
+<!--                               quiet = TRUE) -->
+<!-- cat(unlist(section_firm_sim_cal), sep = '\n') -->
+<!-- ``` -->
+
+```{r section_build_firm_sim_ref, results='asis', eval=SCENARIO_DB_REFERENCE}
+section_firm_sim_ref <- knitr::knit_child('section_firm_sim_ref.Rmd',
+                              envir = environment(),
+                              quiet = TRUE)
+cat(unlist(section_firm_sim_ref), sep = '\n')
+```
