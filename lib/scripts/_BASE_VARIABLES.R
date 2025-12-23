@@ -20,13 +20,14 @@ BASE_MZ_INTERNATIONAL <- sort(unique(TAZ_System$Mesozone[TAZ_System$TAZ_TYPE == 
 rm(TAZ_System)
 
 # Define application time periods, run years, and other temporal inputs
-BASE_SCENARIO_BASE_NAME <- "base" #base year scenario name
-BASE_SCENARIO_BASE_YEAR <- 2019 #base year scenario year
+BASE_SCENARIO_BASE_NAME <- "base_2022" #base year scenario name
+BASE_SCENARIO_BASE_YEAR <- 2022 #base year scenario year
 
 # Define other application parameters
+BASE_MODREG_EMP_CONTROL <- c("COUNTY") # "TAZ" or "COUNTY", Whether to use TAZ or County controls to govern model region employment control totals
 BASE_NEW_FIRMS_PROP <- 0.3 #proportion of growth in employment in already developed TAZs that comes from new firm formation as opposed to existing firm growth
 BASE_PROVALTHRESHOLD <- 0.8 #production value threshold for supplier selection
-BASE_FOREIGN_PROD_COST_FACTOR <- 0.9 # producer cost factor for foreign produers (applied to unit costs)
+BASE_FOREIGN_PROD_COST_FACTOR <- 0.9 # producer cost factor for foreign producers (applied to unit costs)
 BASE_FOREIGN_FIRM_SIZE_LIMIT <- 500000000 # production capacity limit or consumption requirement limit in pounds for foreign firms
 BASE_WHOLESALE_COST_FACTOR <- 1.2 # markup factor for wholesalers (applied to unit costs)
 BASE_SUPPLIERS_PER_BUYER <- 20L #number of suppliers to sample in PMG

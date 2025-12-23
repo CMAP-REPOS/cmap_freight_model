@@ -4,15 +4,14 @@ SYSTEM_PKGS <- c("data.table", "rFreight", "rhdf5", "pscl", "TSP", "apollo", "fs
 SYSTEM_REPORT_PKGS <- c("DT", "flexdashboard", "leaflet", "plotly", "scales", "sf",
                         "pander", "stringr", "kableExtra", "openxlsx")
 
-SYSTEM_DEV_PKGS <- c("lwgeom", "ggrepel", "dplyr",
-                     "ggspatial", "bookdown", "leaps")
+SYSTEM_DEV_PKGS <- c("")
 
 # combine lists so all install if needed on call to initializeApp
 # leave the list of packages used in development seperate, not required for application
 SYSTEM_PKGS <- c(SYSTEM_PKGS, SYSTEM_REPORT_PKGS[!SYSTEM_REPORT_PKGS %in% SYSTEM_PKGS])
 
 SYSTEM_APP_PATH       <- getwd()
-SYSTEM_RFREIGHT_PATH  <- file.path(SYSTEM_APP_PATH, "lib", "pkgs", "rFreight_0.1-38.zip")
+SYSTEM_RFREIGHT_PATH  <- file.path(SYSTEM_APP_PATH, "lib", "pkgs", "rFreight_0.1-39.zip")
 SYSTEM_PKGS_PATH      <- file.path(SYSTEM_APP_PATH, "lib", "pkgs", "library")
 
 # add the library folder to the library search paths -- required for proper install and loading, 
@@ -22,7 +21,6 @@ Sys.setenv(R_LIBS = paste(SYSTEM_PKGS_PATH, Sys.getenv("R_LIBS"), sep=.Platform$
 
 SYSTEM_PANDOC_PATH      <- file.path(SYSTEM_APP_PATH, "lib", "pkgs", "Pandoc")
 SYSTEM_DATA_PATH        <- file.path(SYSTEM_APP_PATH, "lib", "data")
-SYSTEM_TEMPLATES_PATH   <- file.path(SYSTEM_APP_PATH, "lib", "templates")
 SYSTEM_SCRIPTS_PATH     <- file.path(SYSTEM_APP_PATH, "lib", "scripts")
 SYSTEM_DEV_PATH         <- file.path(SYSTEM_APP_PATH, "dev")
 SYSTEM_CALIBRATION_PATH <- file.path(SYSTEM_APP_PATH, "dev", "Calibration", "outputs")
