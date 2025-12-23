@@ -10,7 +10,6 @@ firm_sim_process_inputs <- function(envir) {
                       cbp_ag            = file.path(SYSTEM_DATA_PATH, "data_emp_cbp_ag.csv"),               # CBP data file -- Agriculture records generated separately
                       EstSizeCategories = file.path(SYSTEM_DATA_PATH, "data_est_size_categories.csv"),      # Establishment size categories and labels
                       io                = file.path(SYSTEM_DATA_PATH, "data_2022io.csv"),                   # Input output table
-                      unitcost          = file.path(SYSTEM_DATA_PATH, "data_unitcost.csv"),                 # Unit costs 
                       prefweights       = file.path(SYSTEM_DATA_PATH, "data_firm_pref_weights.csv"),        # Preference weights
                       mzemp             = file.path(SYSTEM_DATA_PATH, "data_mesozone_emprankings.csv"),     # Industry rankings data by mesozone based on employment
                       TAZ_System        = file.path(SYSTEM_DATA_PATH, "TAZ_System.csv"),                    # TAZ system 
@@ -147,6 +146,7 @@ firm_sim_process_inputs <- function(envir) {
                       TAZEmployment        = file.path(SCENARIO_INPUT_PATH, "data_emp_control_taz.csv"),          # Control totals for emmployment by TAZ
                       FirmSizeFactors      = file.path(SCENARIO_INPUT_PATH, "data_firmsize_factors.csv"),         # Factors to adjust firm sizes by NAICS code 
                       ProductivityFactors  = file.path(SCENARIO_INPUT_PATH, "data_productivity_factors.csv"),     # Factors to scale IO table to account for productivity increases over time
+                      unitcost             = file.path(SCENARIO_INPUT_PATH, "data_unitcost.csv"),                 # Unit costs 
                       TAZHH                = file.path(SCENARIO_INPUT_PATH, "data_hh.csv"),                       # CMAP model region HHs summarized at the TAZ level
                       for_prod             = file.path(SCENARIO_INPUT_PATH, "data_foreign_prod.csv"),             # Foreign producer values by commodity and country (imports)
                       for_cons             = file.path(SCENARIO_INPUT_PATH, "data_foreign_cons.csv"))             # foreign consumer values by commodity and country (exports)
