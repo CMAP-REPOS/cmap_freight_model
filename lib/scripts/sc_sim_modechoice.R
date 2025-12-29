@@ -141,10 +141,12 @@ minLogisticsCost <- function(BuyerSupplierPairs, ShipmentRoutesCosts, ModeChoice
     
   if(runmode==0)	{
       
-      #Direct:
-      DirectPairs <- BuyerSupplierPairs[(distchannel==1) & 
-                                          Production_zone %in% BASE_TAZ_DOMESTIC & 
-                                          Consumption_zone %in% BASE_TAZ_DOMESTIC]
+      #Direct (including all within CMAP region, excluding international and domestic to/from Hawaii):
+      DirectPairs <- BuyerSupplierPairs[((distchannel==1) & 
+                                          Production_zone %in% BASE_MZ_DOMESTIC_NOT_HAWAII & 
+                                          Consumption_zone %in% BASE_MZ_DOMESTIC_NOT_HAWAII)|
+                                          (Production_zone %in% BASE_MZ_INTERNAL & 
+                                             Consumption_zone %in% BASE_MZ_INTERNAL)]
       
       if(!is.null(modeChoiceConstants) & nrow(DirectPairs) > 0){
         DirectPairs <- minLogisticsCostSctgPaths(DirectPairs,
@@ -157,7 +159,7 @@ minLogisticsCost <- function(BuyerSupplierPairs, ShipmentRoutesCosts, ModeChoice
       } else if(nrow(DirectPairs) > 0) {
         DirectPairs <- minLogisticsCostSctgPaths(DirectPairs,
                                                  iSCTG,
-                                                 c(3,13,31,46,55:57),
+                                                 paths = c(3,13,31,46,55:57),
                                                  sctg,
                                                  ShipmentRoutesCosts,
                                                  ModeChoiceParameters,
@@ -175,15 +177,16 @@ minLogisticsCost <- function(BuyerSupplierPairs, ShipmentRoutesCosts, ModeChoice
         }
       }
       
-      #Indirect and International:
-      IndirectPairs <- BuyerSupplierPairs[(distchannel > 1) & 
-                                            ((Production_zone %in% BASE_TAZ_INTERNATIONAL | 
-                                                Consumption_zone %in% BASE_TAZ_INTERNATIONAL))]
+      #Indirect (excluding within CMAP region) or International (including to/from Hawaii):
+      IndirectPairs <- BuyerSupplierPairs[(distchannel > 1 & !(Production_zone %in% BASE_MZ_INTERNAL & 
+                                                                 Consumption_zone %in% BASE_MZ_INTERNAL)) | 
+                                            ((Production_zone %in% c(BASE_MZ_INTERNATIONAL, BASE_MZ_DOMESTIC_HAWAII)) | 
+                                                Consumption_zone %in% c(BASE_MZ_INTERNATIONAL, BASE_MZ_DOMESTIC_HAWAII))]
       
       if(!is.null(modeChoiceConstants) & nrow(IndirectPairs) > 0){
         IndirectPairs <- minLogisticsCostSctgPaths(IndirectPairs,
                                                    iSCTG,
-                                                   c(1:2,4:12,14:30,32:45,47:54,55:57),
+                                                   paths = c(1:2,4:12,14:30,32:45,47:54,55:57),
                                                    sctg,
                                                    ShipmentRoutesCosts,
                                                    ModeChoiceParameters,
@@ -191,7 +194,7 @@ minLogisticsCost <- function(BuyerSupplierPairs, ShipmentRoutesCosts, ModeChoice
       } else if (nrow(IndirectPairs) > 0) {
         IndirectPairs <- minLogisticsCostSctgPaths(IndirectPairs,
                                                    iSCTG,
-                                                   c(1:2,4:12,14:30,32:45,47:54,55:57),
+                                                   paths = c(1:2,4:12,14:30,32:45,47:54,55:57),
                                                    sctg,
                                                    ShipmentRoutesCosts,
                                                    ModeChoiceParameters,
@@ -218,7 +221,7 @@ minLogisticsCost <- function(BuyerSupplierPairs, ShipmentRoutesCosts, ModeChoice
       if(is.null(modeChoiceConstants) & nrow(DomesticShipmentPairs) > 0){
         DomesticShipmentPairs <- minLogisticsCostSctgPaths(DomesticShipmentPairs,
                                                            iSCTG,
-                                                           c(1:2,4:12,14:30,32:45,55:57),
+                                                           paths = c(1:2,4:12,14:30,32:45,55:57),
                                                            sctg,
                                                            ShipmentRoutesCosts,
                                                            ModeChoiceParameters,
@@ -226,7 +229,7 @@ minLogisticsCost <- function(BuyerSupplierPairs, ShipmentRoutesCosts, ModeChoice
       } else if(nrow(DomesticShipmentPairs) > 0) {
         DomesticShipmentPairs <- minLogisticsCostSctgPaths(DomesticShipmentPairs,
                                                            iSCTG,
-                                                           c(1:2,4:12,14:30,32:45,55:57),
+                                                           paths = c(1:2,4:12,14:30,32:45,55:57),
                                                            sctg,
                                                            ShipmentRoutesCosts,
                                                            ModeChoiceParameters,
@@ -351,3 +354,4 @@ calcLogisticsCost <- function(dfspi,ModeChoiceParameters,s,path){
   return(dfspi$minc)
   
 }
+
