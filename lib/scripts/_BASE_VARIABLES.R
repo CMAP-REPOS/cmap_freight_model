@@ -16,6 +16,9 @@ BASE_TAZ_INTERNATIONAL <- sort(unique(TAZ_System$TAZ[TAZ_System$TAZ_TYPE == "INT
 BASE_MZ_DOMESTIC <- sort(unique(TAZ_System$Mesozone[TAZ_System$TAZ_TYPE %in% c("MODELREGION", "NATIONAL")])) #range of Mesozones that covers the USA
 BASE_MZ_NATIONAL <- BASE_MZ_DOMESTIC[!BASE_MZ_DOMESTIC %in% BASE_MZ_INTERNAL] #range of Mesozones that covers the USA outside the CMAP model region
 BASE_MZ_INTERNATIONAL <- sort(unique(TAZ_System$Mesozone[TAZ_System$TAZ_TYPE == "INTERNATIONAL"])) #range of Mesozones covering foreign countries
+BASE_MZ_DOMESTIC_NOT_HAWAII <- sort(unique(TAZ_System$Mesozone[TAZ_System$TAZ_TYPE %in% c("MODELREGION", "NATIONAL") & !TAZ_System$state %in% "HI"])) #range of Mesozones that covers the USA except Hawaii
+BASE_MZ_DOMESTIC_HAWAII <- sort(unique(TAZ_System$Mesozone[TAZ_System$TAZ_TYPE %in% c("MODELREGION", "NATIONAL") & TAZ_System$state %in% "HI"])) #range of Mesozones that covers the Hawaii only
+
 
 rm(TAZ_System)
 
