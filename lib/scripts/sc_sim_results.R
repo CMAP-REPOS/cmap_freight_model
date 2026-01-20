@@ -5,28 +5,11 @@
 sc_sim_markets_check <- function(naics_set){
   
   # parse the market script
-  log.market <- data.table(LogLine = readLines(con <- file(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_market.txt"))))
-  close(con)
-  log.market.com <- log.market[grep("Finished Create_Markets_market", LogLine)]
-  
-  # Add market, groups, and elapsed time fields
-  split_market_line <- function(finished_text){
-    splits <- c("market-", ", Elapsed", " ")
-    splittextvec <- gsub(",", "", finished_text)
-    for(splittext in splits) splittextvec <- c(splittextvec, unlist(strsplit(splittextvec[length(splittextvec)], split = splittext)))
-    return(splittextvec[c(5,10,11)]) 
-  }
-  
-  log.market.com[, c("Market", "Runtime", "RuntimeUnit") := data.table(t(sapply(LogLine, split_market_line)))]
-  log.market.com[, RuntimeSec := c(1,60,3600)[match(RuntimeUnit,c("secs","mins","hours"))] * as.numeric(Runtime)]
-  
-  # cycle through the completed markets and grabs some stats
-  # for all of the groups in that have completed, cycle through and check
-  naics_set[log.market.com, MarketRT := i.RuntimeSec, on = "Market"]
-  naics_set[, MarketStep := ifelse(is.na(MarketRT), FALSE, TRUE)]
+  log.market <- fread(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_markets.csv"))
+  naics_set[, MarketStep := ifelse(Market %in% log.market$Market, TRUE, FALSE)]
   
   # check the outputs for each market/group with each market
-  # paricularly, check total output cap, purchase amount, ratio, by group
+  # particularly, check total output cap, purchase amount, ratio, by group
   # domestic and international amounts and check the balance between those has been resolved correctly
   group_summary <- list()
   
@@ -34,10 +17,13 @@ sc_sim_markets_check <- function(naics_set){
     
     print(market)
     market_completed_market <- naics_set[Market == market]$MarketStep
-    #should contain: consc, prodc
+    
     if(market_completed_market){
       
-      load(file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, ".Rdata")))
+      consc <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_consc.fst")),
+                        as.data.table = TRUE)
+      prodc <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_prodc.fst")),
+                        as.data.table = TRUE)
       
       # check the results in the market file
       naics_set[Market == market, c("MarketProdN", "MarketProdOCT") := .(prodc[, .N], sum(prodc$OutputCapacityTons))]
@@ -110,39 +96,26 @@ sc_sim_markets_check <- function(naics_set){
 sc_sim_buy_sell_check <- function(naics_set){
   
   # parse the buy_sell script
-  log.buysell <- data.table(LogLine = readLines(con <- file(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_buy_sell.txt"))))
-  close(con)
-  log.buysell.com <- log.buysell[grep("Finished Create_Buy_Sell_market", LogLine)]
+  log.buysell <- fread(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_buy_sell.csv"))
+  naics_set[, BuySell := ifelse(Market %in% log.buysell$Market, TRUE, FALSE)]
   
-  # Add market, groups, and elapsed time fields
-  split_buysell_line <- function(finished_text){
-    splits <- c("market-", "-groups-", " ")
-    splittextvec <- gsub(",", "", finished_text)
-    for(splittext in splits) splittextvec <- c(splittextvec, unlist(strsplit(splittextvec[length(splittextvec)], split = splittext)))
-    return(splittextvec[c(4,6,11,12)]) 
-  }
-  
-  log.buysell.com[, c("Market", "Groups", "Runtime", "RuntimeUnit") := data.table(t(sapply(LogLine, split_buysell_line)))]
-  log.buysell.com[, RuntimeSec := c(1,60,3600)[match(RuntimeUnit,c("secs","mins","hours"))] * as.numeric(Runtime)]
-  
-  # cycle through the completed markets and grabs some stats
-  # for all of the groups in that have completed, cycle through and check
-  naics_set[log.buysell.com, BuySellRT := i.RuntimeSec, on = "Market"]
-  naics_set[, BuySell := ifelse(is.na(BuySellRT), FALSE, TRUE)]
-  
-  # after buy sell:
-  # there is a workspace called Market.Rdata
   # load the market
   for(market in naics_set$Market){
     
     print(market)
     market_completed_buysell <- naics_set[Market == market]$BuySell
-    #should contains: consc, prodc
+    
     if(market_completed_buysell){
-      load(file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, ".Rdata")))
+      
+      consc <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_consc.fst")),
+                        as.data.table = TRUE)
+      prodc <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_prodc.fst")),
+                        as.data.table = TRUE)
+      
       # check the results in the market file
       naics_set[Market == market, c("BuySellProdN", "BuySellProdOCT") := .(prodc[, .N], sum(prodc$OutputCapacityTons))]
       naics_set[Market == market, c("BuySellConsN", "BuySellConsPAT") := .(consc[,.N], sum(consc$PurchaseAmountTons))]
+      
       # rm the tables
       rm(prodc, consc)
     }
@@ -151,8 +124,8 @@ sc_sim_buy_sell_check <- function(naics_set){
   # load the naics_set_groups
   naics_set_groups <- readRDS(file.path(SCENARIO_OUTPUT_PATH, "naics_set_groups.rds"))
   
-  # check whether all of the buy and sell .csv files were actually produced, seperately from the check
-  # on the overall workspace
+  # check whether all of the buy and sell .csv files were actually produced, 
+  # separately from the check on the overall market files
   buyfiles <- list.files(path = SCENARIO_OUTPUT_PATH, pattern = ".buy.csv")
   sellfiles <- list.files(path = SCENARIO_OUTPUT_PATH, pattern = ".sell.csv")
   
@@ -187,41 +160,26 @@ sc_sim_buy_sell_check <- function(naics_set){
 sc_sim_sampling_check <- function(naics_set){
   
   # parse the sampling scripts
-  log.samp <- data.table(LogLine = readLines(con <- file(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_sampling.txt"))))
-  close(con)
-  log.samp.com <- log.samp[grep("Finished Create_PC_Samples_market", LogLine)]
-  
-  # Add market, group, and elapsed time fields
-  split_sampling_line <- function(finished_text){
-    splits <- c("market-", "-group-", "-of", "submitted: ", " ", " ")
-    splittextvec <- finished_text
-    for(splittext in splits) splittextvec <- c(splittextvec, unlist(strsplit(splittextvec[length(splittextvec)], split = splittext)))
-    return(splittextvec[c(4,6,10,11)]) 
-  }
-  
-  log.samp.com[, c("Market", "Group", "Runtime", "RuntimeUnit") := data.table(t(sapply(LogLine, split_sampling_line)))]
-  log.samp.com[, RuntimeSec := c(1,60,3600)[match(RuntimeUnit,c("secs","mins","hours"))] * as.numeric(Runtime)]
-  log.samp.com[, Market_Group := paste(Market, Group, sep = "_")]
+  log.samp <- fread(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_sampling.csv"))
   
   # load the naics_set_groups
   naics_set_groups <- readRDS(file.path(SCENARIO_OUTPUT_PATH, "naics_set_groups.rds"))
+  naics_set_groups[, Sampling := ifelse(Market_Group %in% log.samp$Market, TRUE, FALSE)]
   
-  # cycle through the completed markets and grabs some stats
-  # for all of the groups in that have completed, cycle through and check
-  naics_set_groups[log.samp.com, SamplingRT := i.RuntimeSec, on = "Market_Group"]
-  naics_set_groups[, Sampling := ifelse(is.na(SamplingRT), FALSE, TRUE)]
-  
-  # after sampling:
-  # there is a workspace called Market_gGroup.Rdata
-  # load the market
+  # after sampling: load the market
   for(market_group in naics_set_groups[Sampling == TRUE]$Market_Group){
     
     print(market_group)
     market <- naics_set_groups[Market_Group == market_group]$Market
     g <- naics_set_groups[Market_Group == market_group]$Group
     
-    #should contains: conscg, pc, prodcg
-    load(file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, ".Rdata")))
+    conscg <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_consc.fst")),
+                      as.data.table = TRUE)
+    prodcg <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_prodc.fst")),
+                      as.data.table = TRUE)
+    
+    pc <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_pc.fst")),
+                   as.data.table = TRUE)
     
     if(exists("prodcg") & exists("conscg")){
       naics_set_groups[Market_Group == market_group, 
@@ -272,14 +230,13 @@ sc_sim_sampling_check <- function(naics_set){
   
   # move some of the summary stats into the market level table (naics_set)
   naics_set[naics_set_groups[, .(Sampling = ifelse(any(Sampling==FALSE), FALSE, TRUE),
-                       SamplingRT = sum(SamplingRT, na.rm = TRUE),           
                        SampCombs = sum(SampCombs, na.rm = TRUE), 
                        SampMissSeller = sum(SampMissSeller, na.rm = TRUE),
                        SampMissBuyer = sum(SampMissBuyer, na.rm = TRUE),
                        SampOCTPATRatioLT1 = sum(SampMissBuyer, na.rm = TRUE)), 
                    by = Market],
-            c("Sampling", "SamplingRT", "SampCombs", "SampMissSeller", "SampMissBuyer", "SampOCTPATRatioLT1") := 
-              .(i.Sampling, i.SamplingRT, i.SampCombs, i.SampMissSeller, i.SampMissBuyer, i.SampOCTPATRatioLT1),
+            c("Sampling", "SampCombs", "SampMissSeller", "SampMissBuyer", "SampOCTPATRatioLT1") := 
+              .(i.Sampling, i.SampCombs, i.SampMissSeller, i.SampMissBuyer, i.SampOCTPATRatioLT1),
             on = "Market"]
   
   # save the groups summary - csv and an rds to add to
@@ -296,40 +253,21 @@ sc_sim_sampling_check <- function(naics_set){
 sc_sim_distchannel_check <- function(naics_set){
   
   # parse the distribution channel scripts
-  log.dist <- data.table(LogLine = readLines(con <- file(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_distchannel.txt"))))
-  close(con)
-  log.dist.com <- log.dist[grep("Finished Apply_Distchannel_market", LogLine)]
-  
-  # Add market, group, and elapsed time fields
-  split_dist_line <- function(finished_text){
-    splits <- c("market-", "-group-", "-of", "submitted: ", " ", " ")
-    splittextvec <- finished_text
-    for(splittext in splits) splittextvec <- c(splittextvec, unlist(strsplit(splittextvec[length(splittextvec)], split = splittext)))
-    return(splittextvec[c(4,6,10,11)]) 
-  }
-  
-  log.dist.com[, c("Market", "Group", "Runtime", "RuntimeUnit") := data.table(t(sapply(LogLine, split_dist_line)))]
-  log.dist.com[, RuntimeSec := c(1,60,3600)[match(RuntimeUnit,c("secs","mins","hours"))] * as.numeric(Runtime)]
-  log.dist.com[, Market_Group := paste(Market, Group, sep = "_")]
+  log.dist  <- fread(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_distchannel.csv"))
   
   # load the naics_set_groups
   naics_set_groups <- readRDS(file.path(SCENARIO_OUTPUT_PATH, "naics_set_groups.rds"))
+  naics_set_groups[, DistChannel := ifelse(Market_Group %in% log.dist$Market, TRUE, FALSE)]
   
-  # cycle through the completed markets and grabs some stats
-  # for all of the groups in that have completed, cycle through and check
-  naics_set_groups[log.dist.com, DistChannelRT := i.RuntimeSec, on = "Market_Group"]
-  naics_set_groups[, DistChannel := ifelse(is.na(DistChannelRT), FALSE, TRUE)]
-  
-  # there is a workspace called Market_gGroup.Rdata
-  # load the market
+  # after distchannel: load the market
   for(market_group in naics_set_groups[DistChannel == TRUE]$Market_Group){
     
     print(market_group)
     market <- naics_set_groups[Market_Group == market_group]$Market
     g <- naics_set_groups[Market_Group == market_group]$Group
     
-    #should contains: conscg, pc, prodcg
-    load(file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, ".Rdata")))
+    pc <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_pc.fst")),
+                   as.data.table = TRUE)
     
     if(exists("pc")){
       
@@ -351,14 +289,13 @@ sc_sim_distchannel_check <- function(naics_set){
   
   # move some of the summary stats into the market level table (naics_set)
   naics_set[naics_set_groups[, .(DistChannel = ifelse(any(DistChannel==FALSE), FALSE, TRUE),
-                                 DistChannelRT = sum(DistChannelRT, na.rm = TRUE),           
                                  DistChannelCombs = sum(DistChannelCombs, na.rm = TRUE), 
                                  DistChannelMissing = sum(DistChannelMissing, na.rm = TRUE),
                                  DistChannel1 = sum(DistChannel1, na.rm = TRUE),
                                  DistChannelGt1 = sum(DistChannel2, DistChannel3, DistChannel4, na.rm = TRUE)), 
                              by = Market],
-            c("DistChannel", "DistChannelRT", "DistChannelCombs", "DistChannelMissing", "DistChannel1", "DistChannelGt1") := 
-              .(i.DistChannel, i.DistChannelRT, i.DistChannelCombs, i.DistChannelMissing, i.DistChannel1, i.DistChannelGt1),
+            c("DistChannel", "DistChannelCombs", "DistChannelMissing", "DistChannel1", "DistChannelGt1") := 
+              .(i.DistChannel, i.DistChannelCombs, i.DistChannelMissing, i.DistChannel1, i.DistChannelGt1),
             on = "Market"]
   
   # save the groups summary - csv and an rds to add to
@@ -375,31 +312,12 @@ sc_sim_distchannel_check <- function(naics_set){
 sc_sim_modechoice_check <- function(naics_set){
   
   # parse the mode choice scripts
-  log.mode <- data.table(LogLine = readLines(con <- file(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_modechoice.txt"))))
-  close(con)
-  log.mode.com <- log.mode[grep("Finished Apply_Mode_Choice_market", LogLine)]
-  
-  # Add market, group, and elapsed time fields
-  split_mode_line <- function(finished_text){
-    splits <- c("market-", "-group-", "-of", "submitted: ", " ", " ")
-    splittextvec <- finished_text
-    for(splittext in splits) splittextvec <- c(splittextvec, unlist(strsplit(splittextvec[length(splittextvec)], split = splittext)))
-    return(splittextvec[c(4,6,10,11)]) 
-  }
-  
-  log.mode.com[, c("Market", "Group", "Runtime", "RuntimeUnit") := data.table(t(sapply(LogLine, split_mode_line)))]
-  log.mode.com[, RuntimeSec := c(1,60,3600)[match(RuntimeUnit,c("secs","mins","hours"))] * as.numeric(Runtime)]
-  log.mode.com[, Market_Group := paste(Market, Group, sep = "_")]
+  log.mode <- fread(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_modechoice.csv"))
   
   # load the naics_set_groups
   naics_set_groups <- readRDS(file.path(SCENARIO_OUTPUT_PATH, "naics_set_groups.rds"))
+  naics_set_groups[, ModeChoice := ifelse(Market_Group %in% log.mode$Market, TRUE, FALSE)]
   
-  # cycle through the completed markets and grabs some stats
-  # for all of the groups in that have completed, cycle through and check
-  naics_set_groups[log.mode.com, ModeChoiceRT := i.RuntimeSec, on = "Market_Group"]
-  naics_set_groups[, ModeChoice := ifelse(is.na(ModeChoiceRT), FALSE, TRUE)]
-  
-  # there is a workspace called Market_gGroup.Rdata
   # load the market
   for(market_group in naics_set_groups[ModeChoice == TRUE]$Market_Group){
     
@@ -407,8 +325,8 @@ sc_sim_modechoice_check <- function(naics_set){
     market <- naics_set_groups[Market_Group == market_group]$Market
     g <- naics_set_groups[Market_Group == market_group]$Group
     
-    #should contains: conscg, pc, prodcg
-    load(file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, ".Rdata")))
+    pc <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_pc.fst")),
+                   as.data.table = TRUE)
     
     if(exists("pc")){
       
@@ -430,15 +348,14 @@ sc_sim_modechoice_check <- function(naics_set){
   
   # move some of the summary stats into the market level table (naics_set)
   naics_set[naics_set_groups[, .(ModeChoice = ifelse(any(ModeChoice == FALSE), FALSE, TRUE),
-                                 ModeChoiceRT = sum(ModeChoiceRT, na.rm = TRUE),           
                                  ModeChoiceCombs = sum(ModeChoiceCombs, na.rm = TRUE), 
                                  ModeChoiceMissing = sum(ModeChoiceMissing, na.rm = TRUE),
                                  AverageShipWeight = mean(AverageShipWeight, na.rm = TRUE),
                                  Mode.Truck = sum(Mode.Truck, na.rm = TRUE),
                                  Mode.Other = sum(Mode.Other, na.rm = TRUE)), 
                              by = Market],
-            c("ModeChoice", "ModeChoiceRT", "ModeChoiceCombs", "ModeChoiceMissing", "AverageShipWeight", "Mode.Truck", "Mode.Other") := 
-              .(i.ModeChoice, i.ModeChoiceRT, i.ModeChoiceCombs, i.ModeChoiceMissing, i.AverageShipWeight, i.Mode.Truck, i.Mode.Other),
+            c("ModeChoice", "ModeChoiceCombs", "ModeChoiceMissing", "AverageShipWeight", "Mode.Truck", "Mode.Other") := 
+              .(i.ModeChoice, i.ModeChoiceCombs, i.ModeChoiceMissing, i.AverageShipWeight, i.Mode.Truck, i.Mode.Other),
             on = "Market"]
   
   # save the groups summary - csv and an rds to add to
@@ -454,29 +371,13 @@ sc_sim_modechoice_check <- function(naics_set){
 
 sc_sim_costs_check <- function(naics_set){
   
-  # parse the costs script
-  log.costs <- data.table(LogLine = readLines(con <- file(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_costs.txt"))))
-  close(con)
-  log.costs.com <- log.costs[grep("Finished Create_Costs_market", LogLine)]
-  
-  # Add market, groups, and elapsed time fields
-  split_costs_line <- function(finished_text){
-    splits <- c("market-", "-group-", "-of", "submitted: ", " ")
-    splittextvec <- finished_text
-    for(splittext in splits) splittextvec <- c(splittextvec, unlist(strsplit(splittextvec[length(splittextvec)], split = splittext)))
-    return(splittextvec[c(4,6,10,11)]) 
-  }
-  
-  log.costs.com[, c("Market", "Groups", "Runtime", "RuntimeUnit") := data.table(t(sapply(LogLine, split_costs_line)))]
-  log.costs.com[, RuntimeUnit := sub(",","", RuntimeUnit)]
-  log.costs.com[, RuntimeSec := c(1,60,3600)[match(RuntimeUnit,c("secs","mins","hours"))] * as.numeric(Runtime)]
-  
-  naics_set[log.costs.com, CostsRT := i.RuntimeSec, on = "Market"]
-  naics_set[, Costs := ifelse(is.na(CostsRT), FALSE, TRUE)]
+  # parse the costs script 
+  log.costs <- fread(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_costs.csv"))
   
   # load the naics_set_groups
   naics_set_groups <- readRDS(file.path(SCENARIO_OUTPUT_PATH, "naics_set_groups.rds"))
-  
+  naics_set_groups[, Costs := ifelse(Market_Group %in% log.costs$Market, TRUE, FALSE)]
+
   # check whether all of the cost .csv files were actually produced
   costsfiles <- list.files(path = SCENARIO_OUTPUT_PATH, pattern = ".costs.csv")
   
@@ -502,28 +403,12 @@ sc_sim_costs_check <- function(naics_set){
 
 sc_sim_pmg_check <- function(naics_set){
   
-  # parse the pmg script
-  log.pmg <- data.table(LogLine = readLines(con <- file(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_pmg.txt"))))
-  close(con)
-  log.pmg.com <- log.pmg[grep("Finished RunPMG_market", LogLine)]
-  
-  # Add market, groups, and elapsed time fields
-  split_pmg_line <- function(finished_text){
-    splits <- c("market-", "-group-", "-of", "submitted: ", " ")
-    splittextvec <- finished_text
-    for(splittext in splits) splittextvec <- c(splittextvec, unlist(strsplit(splittextvec[length(splittextvec)], split = splittext)))
-    return(splittextvec[c(4,6,10,11)]) 
-  }
-  
-  log.pmg.com[, c("Market", "Groups", "Runtime", "RuntimeUnit") := data.table(t(sapply(LogLine, split_pmg_line)))]
-  log.pmg.com[, RuntimeUnit := sub(",","", RuntimeUnit)]
-  log.pmg.com[, RuntimeSec := c(1,60,3600)[match(RuntimeUnit,c("secs","mins","hours"))] * as.numeric(Runtime)]
-  
-  naics_set[log.pmg.com, PMGRT := i.RuntimeSec, on = "Market"]
-  naics_set[, PMG := ifelse(is.na(PMGRT), FALSE, TRUE)]
+  # parse the costs script 
+  log.pmg <- fread(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_pmg.csv"))
   
   # load the naics_set_groups
   naics_set_groups <- readRDS(file.path(SCENARIO_OUTPUT_PATH, "naics_set_groups.rds"))
+  naics_set_groups[, PMG := ifelse(Market_Group %in% log.pmg$Market, TRUE, FALSE)]
   
   # check whether all of the out .csv files were actually produced
   outfiles <- list.files(path = SCENARIO_OUTPUT_PATH, pattern = ".out.csv")
@@ -550,41 +435,31 @@ sc_sim_pmg_check <- function(naics_set){
 
 sc_sim_shipments_check <- function(naics_set){
   
-  # parse the shipments scripts
-  log.ship <- data.table(LogLine = readLines(con <- file(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_shipments.txt"))))
-  close(con)
-  log.ship.com <- log.ship[grep("Finished Process_PMG_Outputs_market", LogLine)]
-  
-  # Add market, group, and elapsed time fields
-  split_ship_line <- function(finished_text){
-    splits <- c("market-", "-group-", "-of", "submitted: ", " ", " ")
-    splittextvec <- finished_text
-    for(splittext in splits) splittextvec <- c(splittextvec, unlist(strsplit(splittextvec[length(splittextvec)], split = splittext)))
-    return(splittextvec[c(4,6,10,11)]) 
-  }
-  
-  log.ship.com[, c("Market", "Group", "Runtime", "RuntimeUnit") := data.table(t(sapply(LogLine, split_ship_line)))]
-  log.ship.com[, RuntimeSec := c(1,60,3600)[match(RuntimeUnit,c("secs","mins","hours"))] * as.numeric(Runtime)]
-  log.ship.com[, Market_Group := paste(Market, Group, sep = "_")]
+  # parse the costs script 
+  log.ship <- fread(file.path(SCENARIO_OUTPUT_PATH, "log_sc_sim_shipments.csv"))
   
   # load the naics_set_groups
   naics_set_groups <- readRDS(file.path(SCENARIO_OUTPUT_PATH, "naics_set_groups.rds"))
+  naics_set_groups[, Shipments := ifelse(Market_Group %in% log.ship$Market, TRUE, FALSE)]
   
-  # cycle through the completed markets and grabs some stats
-  # for all of the groups in that have completed, cycle through and check
-  naics_set_groups[log.ship.com, ShipmentsRT := i.RuntimeSec, on = "Market_Group"]
-  naics_set_groups[, Shipments := ifelse(is.na(ShipmentsRT), FALSE, TRUE)]
-  
-  # there is a workspace called Market_gGroup.Rdata
-  # load the market
+  # check the market files
   for(market_group in naics_set_groups[ModeChoice == TRUE]$Market_Group){
     
     print(market_group)
     market <- naics_set_groups[Market_Group == market_group]$Market
     g <- naics_set_groups[Market_Group == market_group]$Group
     
-    #should contains: conscg, prodcg, pc, pc_pairs
-    load(file = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, ".Rdata")))
+    #conscg, prodcg, pc, pc_pairs
+    conscg <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_consc.fst")),
+                       as.data.table = TRUE)
+    prodcg <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_prodc.fst")),
+                       as.data.table = TRUE)
+    
+    pc <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_pc.fst")),
+                   as.data.table = TRUE)
+    
+    pc_pairs <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_pc_pairs.fst")),
+                   as.data.table = TRUE)
     
     if(exists("prodcg")){
       
@@ -649,7 +524,6 @@ sc_sim_shipments_check <- function(naics_set){
   
   # move some of the summary stats into the market level table (naics_set)
   naics_set[naics_set_groups[, .(Shipments = ifelse(any(Shipments == FALSE), FALSE, TRUE),
-                                 ShipmentsRT = sum(ShipmentsRT, na.rm = TRUE),           
                                  ShipmentsProdN = sum(ShipmentsProdN, na.rm = TRUE), 
                                  ShipmentsProdOCT = sum(ShipmentsProdOCT, na.rm = TRUE), 
                                  ShipmentsConsN = sum(ShipmentsConsN, na.rm = TRUE), 
@@ -660,9 +534,9 @@ sc_sim_shipments_check <- function(naics_set){
                                  ShipmentsConsShortfall = sum(ShipmentsConsShortfall, na.rm = TRUE),
                                  ShipmentsProdUnusedCap = sum(ShipmentsProdUnusedCap, na.rm = TRUE)), 
                              by = Market],
-            c("Shipments", "ShipmentsRT", "ShipmentsProdN", "ShipmentsProdOCT", "ShipmentsConsN", "ShipmentsConsPAT",
+            c("Shipments", "ShipmentsProdN", "ShipmentsProdOCT", "ShipmentsConsN", "ShipmentsConsPAT",
               "ShipmentsPCCombs", "ShipmentsPCPairsCombs", "ShipmentsPCPairsTraded", "ShipmentsConsShortfall", "ShipmentsProdUnusedCap") := 
-              .(i.Shipments, i.ShipmentsRT, i.ShipmentsProdN, i.ShipmentsProdOCT, i.ShipmentsConsN, i.ShipmentsConsPAT, 
+              .(i.Shipments, i.ShipmentsProdN, i.ShipmentsProdOCT, i.ShipmentsConsN, i.ShipmentsConsPAT, 
                 i.ShipmentsPCCombs, i.ShipmentsPCPairsCombs, i.ShipmentsPCPairsTraded, i.ShipmentsConsShortfall, i.ShipmentsProdUnusedCap),
             on = "Market"]
   
@@ -675,7 +549,7 @@ sc_sim_shipments_check <- function(naics_set){
   
 }
 
-### Shipments --------------------------------------------------------------------------
+### Ports --------------------------------------------------------------------------
 
 sc_sim_ports_check <- function(naics_set, BuyerSupplierPairs){
   
