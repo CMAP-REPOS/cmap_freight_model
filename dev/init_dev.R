@@ -9,7 +9,7 @@
 source(file.path("lib", "scripts", "init_start_rFreight_model.R"))
 
 # Load additional dev packages
-loadPackages(SYSTEM_DEV_PKGS, SYSTEM_PKGS_PATH)
+if(SYSTEM_DEV_PKGS != "") loadPackages(SYSTEM_DEV_PKGS, SYSTEM_PKGS_PATH)
 
 ### Define development paths -----------------------------------------------------------------
 
