@@ -2,13 +2,18 @@
 # dev script: data_taz_system.R
 #
 # Purpose:
-# Create TAZ correspodence file
+# Create TAZ correspondence file
+# ### NOTE: this is for reference only
+# ### produces the version of TAZ_System 
+# ### for the 2017 base year with the country codes 
+# ### these TAZs still match the skim TAZs 
+# ### but not the update trade data for 2022
 #
 # Outputs:
 # Model inputs in lib\data:
 # TAZ_System.csv
 #
-# use init_dev.R to run here instead of sourcing from _Master_Dev.R
+# use init_dev.R to run here 
 source("./dev/init_dev.R")
 
 ### READ INPUT FILES ==================================================
