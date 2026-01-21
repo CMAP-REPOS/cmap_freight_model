@@ -1,0 +1,59 @@
+NAICSIO,IndustryName
+230301,Nonresidential maintenance and repair
+230302,Residential maintenance and repair
+233210,Health care structures
+233230,Manufacturing structures
+233240,Power and communication structures
+233262,Educational and vocational structures
+233411,Single-family residential structures
+233412,Multifamily residential structures
+311224,Soybean and other oilseed processing
+331313,Alumina refining and primary aluminum production
+331410,Nonferrous metal (except aluminum) smelting and refining
+332119,"Metal crown, closure, and other metal stamping (except automotive)"
+332999,Other fabricated metal manufacturing
+333242,Semiconductor machinery manufacturing
+333316,Photographic and photocopying equipment manufacturing
+333318,Other commercial and service industry machinery manufacturing
+333413,Industrial and commercial fan and blower and air purification equipment manufacturing
+333517,Machine tool manufacturing
+333914,"Measuring, dispensing, and other pumping equipment manufacturing"
+334118,Computer terminals and other computer peripheral equipment manufacturing
+335220,Major household appliance manufacturing
+423100,Motor vehicle and motor vehicle parts and supplies
+423400,Professional and commercial equipment and supplies
+423600,Household appliances and electrical and electronic goods
+423800,"Machinery, equipment, and supplies"
+424200,Drugs and druggists' sundries
+424400,Grocery and related product wholesalers
+424700,Petroleum and petroleum products
+425000,Wholesale electronic markets and agents and brokers
+444000,Building material and garden equipment and supplies dealers
+446000,Health and personal care stores
+447000,Gasoline stations
+448000,Clothing and clothing accessories stores
+454000,Nonstore retailers
+493000,Warehousing and storage
+524113,Direct life insurance carriers
+2332A0,Office and commercial structures
+2332C0,Transportation structures and highways and streets
+2332D0,Other nonresidential structures
+2334A0,Other residential structures
+33712N,Other household nonupholstered furniture
+4200ID,Customs duties
+423A00,Other durable goods merchant wholesalers
+424A00,Other nondurable goods merchant wholesalers
+4B0000,All other retail
+5241XX,"Insurance carriers, except direct life"
+531HSO,Owner-occupied housing
+531HST,Tenant-occupied housing
+531ORE,Other real estate
+GSLGE,State and local government (educational services)
+GSLGH,State and local government (hospitals and health services)
+GSLGO,State and local government (other services)
+S00101,Federal electric utilities
+S00102,Other federal government enterprises
+S00300,Noncomparable imports
+S00401,Scrap
+S00402,Used and secondhand goods
+S00900,Rest of the world adjustment
