@@ -15,11 +15,6 @@ data_trade <- function(macro_inputs_path){
 
   ### READ INPUT FILES ==================================================
   
-  # Macroeconomic input and interim output files for scenario input development are stored in
-  # "dev/FutureScenarios/Macroeconomic Inputs"
-  dev_forecasts_dir <- file.path(SYSTEM_DEV_PATH, "FutureScenarios")
-  macro_inputs_path <- file.path(dev_forecasts_dir, "Macroeconomic Inputs")
-  
   # Read in the trade data
   for_prod_wide <- data.table(read.xlsx(file.path(macro_inputs_path, "Updated_Foreign_Trade_Forecasts_20250827.xlsx"),
                              sheet = "data_foreign_prod_BaseCase"))
