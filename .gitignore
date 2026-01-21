@@ -5,6 +5,14 @@
 
 # Folders
 lib/pkgs/library/*
+lib/pkgs/R-4.5.1
 scenarios/*/outputs
 scenarios/*/inputs/*_skims.csv
 scenarios/*/inputs/*_miles.csv
+dev/FutureScenarios/scenarios/base/inputs/*_skims.csv
+dev/FutureScenarios/scenarios/base/inputs/*_miles.csv
+dev/FutureScenarios/scenarios/base_*
+dev/FutureScenarios/scenarios/future_*
+dev/FutureScenarios/Macroeconomic Inputs/FAF5.6.1.csv
+dev/FutureScenarios/Macroeconomic Inputs/FAF5.6.1_2018-2023.csv
+dev/FutureScenarios/2025-02-13 CMAP Inputs/FinalFilesOut/*/
