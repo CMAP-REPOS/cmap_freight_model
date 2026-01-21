@@ -1,0 +1,10 @@
+CHID,CHDESC,VAR,TYPE,COEFF
+1,<999,asc1,Constant,0
+1,<999,SIC1,Variable,5.84
+1,<999,SIC2,Variable,0.975
+2,999~9999,asc2,Constant,0.546
+2,999~9999,DISTCHAN,Variable,-0.788
+3,>9999,asc3,Constant,-1.71
+3,>9999,SIC2,Variable,2.88
+3,>9999,DISTCHAN_2,Variable,0.759
+3,>9999,log_dist,Variable,0.245
