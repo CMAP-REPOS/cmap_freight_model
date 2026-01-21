@@ -1,0 +1,71 @@
+				CBP[YR]CO.TXT
+
+                                County Data Dictionary                                
+
+Note:  In the filenames, [YR] is the 2-digit data year.  Each data field is separated by comma (,) delimiters.
+
+
+Field           Data  
+Name            Type    Description
+
+FIPSTATE        C       FIPS State Code
+
+FIPSCTY         C       FIPS County Code
+
+NAICS           C       Industry Code - 6-digit NAICS code.
+
+EMP_NF          C       Total Mid-March Employees Noise Flag (See all Noise Flag definitions at the end of this record 
+                        layout)
+
+EMP             N       Total Mid-March Employees with Noise
+
+QP1_NF          C       Total First Quarter Payroll Noise Flag
+
+QP1             N       Total First Quarter Payroll ($1,000) with Noise
+                                                              
+AP_NF           C       Total Annual Payroll Noise Flag
+
+AP              N       Total Annual Payroll ($1,000) with Noise
+
+EST             N       Total Number of Establishments
+
+N<5             N       Number of Establishments: Less than 5 Employee Size Class
+
+N5_9            N       Number of Establishments: 5-9 Employee Size Class
+
+N10_19          N       Number of Establishments: 10-19 Employee Size Class
+
+N20_49          N       Number of Establishments: 20-49 Employee Size Class
+
+N50_99          N       Number of Establishments: 50-99 Employee Size Class
+
+N100_249        N       Number of Establishments: 100-249 Employee Size Class
+
+N250_499        N       Number of Establishments: 250-499 Employee Size Class
+
+N500_999        N       Number of Establishments: 500-999 Employee Size Class
+
+N1000           N       Number of Establishments: 1,000 or More Employee Size Class
+
+N1000_1         N       Number of Establishments: Employment Size Class:
+                                1,000-1,499 Employees
+
+N1000_2         N       Number of Establishments: Employment Size Class:
+                                1,500-2,499 Employees
+
+N1000_3         N       Number of Establishments: Employment Size Class:
+                                2,500-4,999 Employees
+
+N1000_4         N       Number of Establishments: Employment Size Class:
+                                5,000 or More Employees
+
+
+NOTE: Noise Flag definitions (fields ending in _NF) are:
+
+        G       0 to < 2% noise (low noise)
+        H       2 to < 5% noise (medium noise)
+	J	>= 5% noise (high noise)
+
+      Flag definition for Establishment by Employment Size Class fields (N<5, N5_9, etc.):
+	
+	N	Not available or not comparable

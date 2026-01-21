@@ -12,6 +12,14 @@
 # use init_dev.R to start application
 source("./dev/init_dev.R")
 
+# source dev scripts containing data processing functions 
+source(file.path("dev", "data_naics2017_corresp.R"))
+source(file.path("dev", "data_taz_system_update_country.R"))
+source(file.path("dev", "data_cbp_2022.R"))
+source(file.path("dev", "data_ag_2022.R"))
+source(file.path("dev", "data_trade.R"))
+source(file.path("dev", "data_io.R"))
+
 ### RUN SCRIPTS ==================================================
 
 # Develop updated common data inputs for the base year of 2022 for the baseline scenario
@@ -20,6 +28,10 @@ source("./dev/init_dev.R")
 SYSTEM_DATA_OLD_PATH <- file.path(SYSTEM_DEV_DATA_PATH, "_Inputs_Data_Old")
 # location for new SYSTEM_DATA files (for use in the updated model)
 SYSTEM_DATA_NEW_PATH <- file.path(SYSTEM_DEV_DATA_PATH, "_Inputs_Data_Revised")
+
+# Forecast inputs location
+dev_forecasts_dir <- file.path(SYSTEM_DEV_PATH, "FutureScenarios")
+macro_inputs_path <- file.path(dev_forecasts_dir, "Macroeconomic Inputs")
 
 # Firm synthesis inputs ------------------------------------------------
 
@@ -96,7 +108,7 @@ file.copy(from = file.path(SYSTEM_DATA_OLD_PATH, "corresp_naics2_empcats.csv"),
 # 2. corresp_naics6_n6io_sctg.csv: Correspondence between NAICS 6-digit, I/O NAICS, and SCTG
 firm_inputs$c_n6_n6io_sctg
 # Update to 2017 NAICS IO codes and NAICS6 codes (old version was in 2007 codes)
-source(file.path("dev", "data_naics2017_corresp.R"))
+data_naics2017_corresp()
 
 # 3, data_est_size_categories.csv: Establishment size categories and labels
 firm_inputs$EstSizeCategories
@@ -114,9 +126,8 @@ file.copy(from = file.path(SYSTEM_DATA_OLD_PATH, "data_firm_pref_weights.csv"),
 
 # 5. TAZ_System.csv: TAZ system
 firm_inputs$TAZ_System
-# Requires updates to countries to march the new trade data, leave the rest of the TAZ system file unchanged
-source(file.path("dev", "data_taz_system_update_country.R"))
-####TODO careful about inconsistencies between with the skims!
+# Requires updates to countries to match the new trade data, leave the rest of the TAZ system file unchanged
+data_taz_system_update_country(macro_inputs_path)
 
 # Data files:
 
@@ -125,20 +136,20 @@ firm_inputs$cbp
 # Update to 2022 CBP (which still use the 2017 NAICS codes)
 # The script scales that CBP data to match state totals 
 # for employment and establishments by NAICS 2 digit code
-source(file.path("dev", "data_cbp_2022.R"))
+data_cbp_2022()
 
 # 7. data_emp_cbp_ag.csv: CBP data file -- Agriculture records generated separately
 firm_inputs$cbp_ag
 # Update to 2022 using the 2022 USDA census of agriculture
-source(file.path("dev", "data_ag_2022.R"))
+data_ag_2022()
 
 # 8. data_2010io.csv: Input output table
 # Requires the processed trade data for building the imports and exports
 # data_foreign_prod_BaseCase_cleaned.csv/data_foreign_cons_BaseCase_cleaned.csv
-source(file.path("dev", "data_trade.R"))
+#source(file.path("dev", "data_trade.R"))
 
 # Process the 2017 io data and scale to 2022 using productivity factors
-source(file.path("dev", "data_io.R"))
+#source(file.path("dev", "data_io.R"))
 
 
 # 10. data_mesozone_emprankings.csv: Industry rankings data by mesozone based on employment
