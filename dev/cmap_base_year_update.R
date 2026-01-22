@@ -83,8 +83,6 @@ ft_inputs <- new.env()
 
 ### Load project input files
 project.files <- c(vehtourpat                = file.path(SYSTEM_DATA_PATH, "model_vehicle_tourpattern.csv"), #Vehicle tour MNL model
-                   emp_cbpzone               = file.path(SYSTEM_DATA_PATH, "data_emp_cbpzone.csv"), #Employment by CBP Zone
-                   #mzemp                     = file.path(SYSTEM_DATA_PATH, "data_mesozone_emprankings.csv"), #Commment out here as already used in firm synthesis
                    numberoftours             = file.path(SYSTEM_DATA_PATH, "model_numberoftours.csv"), #Number of tours MNL model
                    mz_centroids              = file.path(SYSTEM_DATA_PATH, "cmap_data_zone_centroids.csv"), #Centroid coordinates of zones
                    mz_skims                  = file.path(SYSTEM_DATA_PATH, "cmap_data_zone_skims.csv"), #zonal skim times
@@ -96,7 +94,7 @@ loadInputs(files = project.files, envir = ft_inputs)
 names(ft_inputs)
 
 # Review and update the files, by type:
-# Correspondences, labels, and parameters:
+# Correspondences, labels, and parameters for Firm Synthesis:
 
 # 1. corresp_naics2_empcats.csv: Correspondence between NAICS2 groups and aggregated employment groups
 firm_inputs$c_n2_empcats 
@@ -129,7 +127,7 @@ firm_inputs$TAZ_System
 # Requires updates to countries to match the new trade data, leave the rest of the TAZ system file unchanged
 data_taz_system_update_country(macro_inputs_path)
 
-# Data files:
+# Data files for firm synthesis:
 
 # 6. data_emp_cbp.csv: CBP data file
 firm_inputs$cbp
@@ -165,9 +163,147 @@ mzemp <- fread(file.path(cmap_freight_model_inputs, "data_mesozone_emprankings_2
 setnames(mzemp, c("COUNTY" ,"MESOZONE"), c("CountyFIPS", "Mesozone"))
 fwrite(mzemp, file.path(SYSTEM_DATA_NEW_PATH, "data_mesozone_emprankings.csv"))
 
+# Correspondences, labels, and parameters for Supply Chain:
 
+# 1. ModeChoiceParameters.rds: mode choice model parameters
+sc_inputs$ModeChoiceParameters
+# Any changes to be made in calibration
+file.copy(from = file.path(SYSTEM_DATA_OLD_PATH, "ModeChoiceParameters.rds"),
+          to = file.path(SYSTEM_DATA_NEW_PATH, "ModeChoiceParameters.rds"), 
+          overwrite = TRUE)
 
+# 2. PMGParameters.rds: Input parameters to PMG
+sc_inputs$PMGParameters
+# Any changes to be made in calibration
+file.copy(from = file.path(SYSTEM_DATA_OLD_PATH, "PMGParameters.rds"),
+          to = file.path(SYSTEM_DATA_NEW_PATH, "PMGParameters.rds"), 
+          overwrite = TRUE)
 
+# 3. corresp_sctg_category.csv: correspondence between SCTG and descriptions
+sc_inputs$sctg
+# No changes needed
+file.copy(from = file.path(SYSTEM_DATA_OLD_PATH, "corresp_sctg_category.csv"),
+          to = file.path(SYSTEM_DATA_NEW_PATH, "corresp_sctg_category.csv"), 
+          overwrite = TRUE)
+
+# 4. data_modepath_availability.csv: Modes available by SCTG and ODSegment 
+sc_inputs$mode_availability         
+# No changes needed
+file.copy(from = file.path(SYSTEM_DATA_OLD_PATH, "data_modepath_availability.csv"),
+          to = file.path(SYSTEM_DATA_NEW_PATH, "data_modepath_availability.csv"), 
+          overwrite = TRUE)
+
+# 5. data_mode_description.csv: Mode description 
+sc_inputs$mode_description         
+# No changes needed
+file.copy(from = file.path(SYSTEM_DATA_OLD_PATH, "data_mode_description.csv"),
+          to = file.path(SYSTEM_DATA_NEW_PATH, "data_mode_description.csv"), 
+          overwrite = TRUE)
+
+# 6. data_mesozone_gcd.csv: Mesozone to mesozone gcds
+sc_inputs$mesozone_gcd
+# No changes needed
+file.copy(from = file.path(SYSTEM_DATA_OLD_PATH, "data_mesozone_gcd.csv"),
+          to = file.path(SYSTEM_DATA_NEW_PATH, "data_mesozone_gcd.csv"), 
+          overwrite = TRUE)
+
+# 7. data_commodity_shipmentsizes.csv: shipment size categories
+sc_inputs$shipsize
+# No changes needed
+file.copy(from = file.path(SYSTEM_DATA_OLD_PATH, "data_commodity_shipmentsizes.csv"),
+          to = file.path(SYSTEM_DATA_NEW_PATH, "data_commodity_shipmentsizes.csv"), 
+          overwrite = TRUE)
+
+# 8. distchannel model parameter files
+sc_inputs$distchannel_calibration    #model_distchannel_calibration.csv
+sc_inputs$distchannel_food           #model_distchannel_food.csv
+sc_inputs$distchannel_food_cal       #model_distchannel_food_cal.csv
+sc_inputs$distchannel_mfg            #model_distchannel_mfg.csv
+sc_inputs$distchannel_mfg_cal        #model_distchannel_mfg_cal.csv
+# Any changes to calibration parameters to be made in calibration
+dischannel_files <- c("model_distchannel_calibration.csv",
+                      "model_distchannel_food.csv",
+                      "model_distchannel_food_cal.csv",
+                      "model_distchannel_mfg.csv",
+                      "model_distchannel_mfg_cal.csv")
+file.copy(from = file.path(SYSTEM_DATA_OLD_PATH, dischannel_files),
+          to = file.path(SYSTEM_DATA_NEW_PATH, dischannel_files), 
+          overwrite = TRUE)
+
+# Data files for supply chain: 
+
+# 9. FAF distance, ton, and trade type shares for sampling
+# Start with original files, adjustments in calibration if needed
+sc_inputs$FAF_DISTANCE               #data_faf_distance.csv
+sc_inputs$FAF_TON_DIST               #data_faf_ton_distribution.csv
+sc_inputs$FAF_TON_TRADETYPE          #data_faf_ton_tradetype.csv
+fafsampling_files <- c("data_faf_distance.csv",
+                       "data_faf_ton_distribution.csv",
+                       "data_faf_ton_tradetype.csv")
+file.copy(from = file.path(SYSTEM_DATA_OLD_PATH, fafsampling_files),
+          to = file.path(SYSTEM_DATA_NEW_PATH, fafsampling_files), 
+          overwrite = TRUE)
+
+# 10. Airport and Seaport Skims
+sc_inputs$skims_airports            #data_modepath_airports.csv
+sc_inputs$skims_ports               #data_modepath_ports.csv
+
+# Copy the files from CMAP prepared inputs
+cmap_universal <- file.path(dev_forecasts_dir, "2025-02-13 CMAP Inputs", "FinalFilesOut/universal") 
+file.copy(from = file.path(cmap_universal, "data_modepath_airports.csv"),
+          to = file.path(SYSTEM_DATA_NEW_PATH, "data_modepath_airports.csv"), 
+          overwrite = TRUE)
+
+cmap_base_year <- file.path(dev_forecasts_dir, "2025-02-13 CMAP Inputs", "FinalFilesOut/scenario_noLogistics140") 
+file.copy(from = file.path(cmap_base_year, "data_modepath_ports_2022.csv"),
+          to = file.path(SYSTEM_DATA_NEW_PATH, "data_modepath_ports.csv"), 
+          overwrite = TRUE)
+
+# Model parameters for freight truck touring model:
+ft_inputs$vehtourpat  #model_vehicle_tourpattern.csv, Vehicle tour MNL model
+ft_inputs$numberoftours #model_numberoftours.csv, Number of tours MNL model
+ft_inputs$stopduration #model_stopduration.csv, Stop duration MNL model
+ft_inputs$tod #model_timeofday.csv, TOD MNL model
+
+# No changes to these files, copy from old base year
+ft_model_parameters <- c("model_vehicle_tourpattern.csv",
+                       "model_numberoftours.csv",
+                       "model_stopduration.csv",
+                       "model_timeofday.csv")
+file.copy(from = file.path(SYSTEM_DATA_OLD_PATH, ft_model_parameters),
+          to = file.path(SYSTEM_DATA_NEW_PATH, ft_model_parameters), 
+          overwrite = TRUE)
+
+# Zone centroids: cmap_data_zone_centroids.csv
+ft_inputs$mz_centroids  
+# Copy from CMAP prodvided inputs
+file.copy(from = file.path(cmap_freight_model_inputs, "cmap_data_zone_centroids.csv"),
+          to = file.path(SYSTEM_DATA_NEW_PATH, "cmap_data_zone_centroids.csv"), 
+          overwrite = TRUE)
+
+#CMAP Warehouse list, cmap_warehouses.csv
+ft_inputs$warehouses       
+# Copy from CMAP provided inputs
+file.copy(from = file.path(cmap_freight_model_inputs, "cmap_warehouses.csv"),
+          to = file.path(SYSTEM_DATA_NEW_PATH, "cmap_warehouses.csv"), 
+          overwrite = TRUE)
+
+# Skims and zonal employment:
+# Notes that these are currently being read in as common inputs
+# Should be updated to be used as year specific for forecasting in the FTTM
+ft_inputs$mz_skims   #cmap_data_zone_skims.csv zonal skim times
+ft_inputs$zn_totemp  # cmap_data_zone_employment.csv CMAP Zone employment
+
+# Copy from CMAP provided inputs
+cmap_year_specific <- file.path(dev_forecasts_dir, "2025-02-13 CMAP Inputs", "FinalFilesOut/year_specific") 
+ft_inputs_year_specific <- c("cmap_data_zone_skims_2022.csv",
+                             "cmap_data_zone_employment_2022.csv")
+ft_inputs_common <- c("cmap_data_zone_skims.csv",
+                      "cmap_data_zone_employment.csv")
+
+file.copy(from = file.path(cmap_year_specific, ft_inputs_year_specific),
+          to = file.path(SYSTEM_DATA_NEW_PATH, ft_inputs_common), 
+          overwrite = TRUE)
 
 # Update the main application data folder from the working folder ---------------------
 
