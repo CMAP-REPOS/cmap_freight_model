@@ -22,11 +22,11 @@ data_trade <- function(macro_inputs_path){
                              sheet = "data_foreign_cons_BaseCase"))
   
   # TAZ (New file with updated countries to match the trade data)
-  TAZ_System <- fread(file.path(SYSTEM_DATA_PATH, "TAZ_System.csv"))
+  TAZ_System <- fread(file.path(SYSTEM_DATA_NEW_PATH, "TAZ_System.csv"))
   
   # cbp, cbg_ag (new data for 2022)
-  cbp <- fread(file.path(SYSTEM_DATA_PATH, "data_emp_cbp.csv"))
-  cbp_ag <- fread(file.path(SYSTEM_DATA_PATH, "data_emp_cbp_ag.csv"))
+  cbp <- fread(file.path(SYSTEM_DATA_NEW_PATH, "data_emp_cbp.csv"))
+  cbp_ag <- fread(file.path(SYSTEM_DATA_NEW_PATH, "data_emp_cbp_ag.csv"))
   
   ### PROCESS ==================================================
   

@@ -23,6 +23,10 @@ source("./dev/init_dev.R")
 source("./dev/data_unitcost.R")
 source("./dev/data_trade.R")
 
+# location for new SYSTEM_DATA files (for use in the updated model)
+# use this path to load new inputs during data processing as opposed to SYSTEM_DATA_PATH
+SYSTEM_DATA_NEW_PATH <- file.path(SYSTEM_DEV_DATA_PATH, "_Inputs_Data_Revised")
+
 ### PROCESS ====================================================================
 
 ### Create Folder structure ----------------------------------------------------
