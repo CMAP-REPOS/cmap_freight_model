@@ -1,0 +1,45 @@
+Industry_NAICS4,Industry_NAICS4_desc,Commodity_SCTG,Commodity_SCTG_desc,Proportion
+4245,Farm Product Raw Material Merchant Wholesalers,1,Live animals/fish,0.25
+4245,Farm Product Raw Material Merchant Wholesalers,2,Cereal grains,0.25
+4245,Farm Product Raw Material Merchant Wholesalers,3,Other ag prods.,0.25
+4245,Farm Product Raw Material Merchant Wholesalers,4,Animal feed,0.25
+4244,Grocery and Related Product Wholesalers,5,Meat/seafood,0.25
+4244,Grocery and Related Product Wholesalers,6,Milled grain prods.,0.25
+4244,Grocery and Related Product Wholesalers,7,Other foodstuffs,0.25
+4244,Grocery and Related Product Wholesalers,9,Tobacco prods.,0.25
+4248,"Beer, Wine, and Distilled Alcoholic Beverage Merchant Wholesalers",8,Alcoholic beverages,1
+4233,Lumber and Other Construction Materials Merchant Wholesalers,10,Building stone,0.1
+4233,Lumber and Other Construction Materials Merchant Wholesalers,11,Natural sands,0.1
+4233,Lumber and Other Construction Materials Merchant Wholesalers,12,Gravel,0.6
+4233,Lumber and Other Construction Materials Merchant Wholesalers,25,Logs,0.1
+4233,Lumber and Other Construction Materials Merchant Wholesalers,26,Wood prods.,0.1
+4235,Metal and Mineral (except Petroleum) Merchant Wholesalers,13,Nonmetallic minerals,0.25
+4235,Metal and Mineral (except Petroleum) Merchant Wholesalers,14,Metallic ores,0.25
+4235,Metal and Mineral (except Petroleum) Merchant Wholesalers,31,Nonmetal min. prods.,0.25
+4235,Metal and Mineral (except Petroleum) Merchant Wholesalers,32,Base metals,0.25
+4237,"Hardware, and Plumbing and Heating Equipment and Supplies Merchant Wholesalers",15,Coal,0.5
+4237,"Hardware, and Plumbing and Heating Equipment and Supplies Merchant Wholesalers",33,Articles-base metal,0.5
+4247,Petroleum and Petroleum Products Merchant Wholesalers,16,Crude petroleum,0.25
+4247,Petroleum and Petroleum Products Merchant Wholesalers,17,Gasoline,0.25
+4247,Petroleum and Petroleum Products Merchant Wholesalers,18,Fuel oils,0.25
+4247,Petroleum and Petroleum Products Merchant Wholesalers,19,Coal-n.e.c.,0.25
+4246,Chemical and Allied Products Merchant Wholesalers,20,Basic chemicals,0.25
+4246,Chemical and Allied Products Merchant Wholesalers,21,Pharmaceuticals,0.25
+4246,Chemical and Allied Products Merchant Wholesalers,22,Fertilizers,0.25
+4246,Chemical and Allied Products Merchant Wholesalers,23,Chemical prods.,0.25
+4242,Drugs and Druggists Sundries Merchant Wholesalers,21,Pharmaceuticals,1
+4234,Professional and Commercial Equipment and Supplies Merchant Wholesalers,24,Plastics/rubber,1
+4241,Paper and Paper Product Merchant Wholesalers,27,Newsprint/paper,0.33
+4241,Paper and Paper Product Merchant Wholesalers,28,Paper articles,0.34
+4241,Paper and Paper Product Merchant Wholesalers,29,Printed prods.,0.33
+4243,"Apparel, Piece Goods, and Notions Merchant Wholesalers",30,Textiles/leather,1
+4238,"Machinery, Equipment, and Supplies Merchant Wholesalers",34,Machinery,1
+4251,Wholesale Electronic Markets and Agents and Brokers,35,Electronics,0.5
+4251,Wholesale Electronic Markets and Agents and Brokers,38,Precision instruments,0.5
+4236,Electrical and Electronic Goods Merchant Wholesalers,35,Electronics,0.5
+4236,Electrical and Electronic Goods Merchant Wholesalers,38,Precision instruments,0.5
+4231,Motor Vehicle and Motor Vehicle Parts and Supplies Merchant Wholesalers,36,Motorized vehicles,0.5
+4231,Motor Vehicle and Motor Vehicle Parts and Supplies Merchant Wholesalers,37,Transport equip.,0.5
+4232,Furniture and Home Furnishing Merchant Wholesalers,39,Furniture,1
+4239,Miscellaneous Durable Goods Merchant Wholesalers,40,Misc. mfg. prods.,1
+4249,Miscellaneous Nondurable Goods Merchant Wholesalers,40,Misc. mfg. prods.,1

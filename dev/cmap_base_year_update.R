@@ -151,24 +151,25 @@ data_trade(macro_inputs_path)
 # Process the 2017 io data and scale to 2022 using productivity factors
 data_io(macro_inputs_path)
 
-
-# 10. data_mesozone_emprankings.csv: Industry rankings data by mesozone based on employment
+# 9. data_mesozone_emprankings.csv: Industry rankings data by mesozone based on employment
 firm_inputs$mzemp
-### prepared by CMAP -- use their files  and copy here to the correct locations
-### TODO better organization needed for where to put there files
-cmap_prepared_files_path <- "../cmap_scenarios/Baseline Scenario/2025-02-13 CMAP Inputs/freight_model_inputs"
 
-### TODO there are year specific files from CMAP for this input
-### but are they just used in base year firm synthesis for allocation of CBP establishments to TAZs?
-### Copy the 2022 file to the new data inputs folder
+# Prepared by CMAP -- use their files  and copy to the correct locations
+cmap_freight_model_inputs <- file.path(dev_forecasts_dir, "2025-02-13 CMAP Inputs", "freight_model_inputs") 
 
-### fields should be CountyFIPS and Mesozone
-
-file.copy(from = file.path(cmap_prepared_files_path, "data_mesozone_emprankings_2022.csv"),
-          to = file.path(SYSTEM_DATA_NEW_PATH, "data_mesozone_emprankings.csv"), 
-          overwrite = TRUE)
+# There are year specific files from CMAP for this input
+# but just used in base year firm synthesis for allocation of CBP establishments to TAZs
+# Read in the 2022 file, correct the fieldnames, and write to the new data inputs folder
+# Fields should be CountyFIPS and Mesozone
+mzemp <- fread(file.path(cmap_freight_model_inputs, "data_mesozone_emprankings_2022.csv"))
+setnames(mzemp, c("COUNTY" ,"MESOZONE"), c("CountyFIPS", "Mesozone"))
+fwrite(mzemp, file.path(SYSTEM_DATA_NEW_PATH, "data_mesozone_emprankings.csv"))
 
 
+
+
+
+# Update the main application data folder from the working folder ---------------------
 
 # Update the data in the main model data folder
 files_to_copy <- list.files(SYSTEM_DATA_NEW_PATH, full.names = TRUE)
