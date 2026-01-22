@@ -146,10 +146,10 @@ data_ag_2022()
 # 8. data_2010io.csv: Input output table
 # Requires the processed trade data for building the imports and exports
 # data_foreign_prod_BaseCase_cleaned.csv/data_foreign_cons_BaseCase_cleaned.csv
-#source(file.path("dev", "data_trade.R"))
+data_trade(macro_inputs_path)
 
 # Process the 2017 io data and scale to 2022 using productivity factors
-#source(file.path("dev", "data_io.R"))
+data_io(macro_inputs_path)
 
 
 # 10. data_mesozone_emprankings.csv: Industry rankings data by mesozone based on employment
