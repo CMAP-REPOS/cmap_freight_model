@@ -22,5 +22,5 @@ dev/BaseData/Ag/data_farms_enumerated_list.csv
 dev/BaseData/Ag/USDA Ag Census 2022/*.txt
 dev/BaseData/CBP_Emp_HH/cbp22co.txt
 dev/BaseData/CBP_Emp_HH/cbp22st.txt
-
-
+dev/BaseData/_inputs_Data_Revised/cmap_data_zone_skims.csv
+dev/*.zip
