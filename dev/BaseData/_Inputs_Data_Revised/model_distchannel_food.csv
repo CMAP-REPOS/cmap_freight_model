@@ -1,0 +1,10 @@
+CHID,CHDESC,VAR,TYPE,COEFF
+1,Direct,asc1,Constant,0
+1,Direct,emple49,Variable,0.907
+2,One,asc2,Constant,-0.932
+2,One,mfgind,Variable,1.94
+3,Two,asc3,Constant,-3.32
+3,Two,trwind,Variable,3.49
+4,Three,asc4,Constant,-52.5
+4,Three,trwind,Variable,51.4
+4,Three,Distance,Variable,0.000559
