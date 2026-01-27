@@ -97,9 +97,13 @@ for_cons_wide[is.na(for_cons_wide)] <- 0
 # data_modepath_skims.csv
 # data_modepath_miles.csv
 # data_mesozone_skims.csv
+# data_modepath_airports.csv
+# data_modepath_ports.csv
 # cmap_warehouses.csv
 # cmap_data_zone_skims.csv
 # cmap_data_zone_employment.csv
+# cmap_data_truck_EE_poe.csv
+# cmap_data_truck_IE_poe.csv
 current_cmap_forecast <- "2025-02-13 CMAP Inputs/FinalFilesOut"
 cmap_forecast_dir <- file.path(dev_forecasts_dir, current_cmap_forecast)
 
@@ -113,11 +117,15 @@ cmap_forecast_dir <- file.path(dev_forecasts_dir, current_cmap_forecast)
 # "universal" folder contains 
 # cmap_warehouses (which are year specific scenario inputs)
 # cmap_data_zone_skims (which are year specific scenario inputs)
+# cmap_data_truck_EE_poe.csv (which are year specific scenario inputs)
+# data_modepath_airports.csv (which are year specific scenario inputs)
+# (data_mesozone_centroids.csv and data_mesozone_gcd.csv are common data inputs)
 
 # "scenario_noLogistics140" contains 
 # data_modepath_miles_2022, 
 # data_modepath_skims_2022 etc
-# (cmap_data_truck_IE_poe_2022, and data_modepath_ports_2022 are common data files, not scenario files)
+# cmap_data_truck_IE_poe_2022 etc 
+# data_modepath_ports_2022 etc
 
 # cmap produced scenarios for 2022, 2030, 2040, 2050, 2060 (no forecasts for the 20x5s)
 cmap_forecast_years <- c(2022, 2030, 2040, 2050, 2060)
@@ -156,6 +164,13 @@ cmap_warehouses <- fread(file.path(cmap_forecast_dir,
                                    "universal", 
                                    "cmap_warehouses.csv"))
 
+cmap_data_truck_EE_poe <- fread(file.path(cmap_forecast_dir, 
+                                   "universal", 
+                                   "cmap_data_truck_EE_poe.csv"))
+
+data_modepath_airports <- fread(file.path(cmap_forecast_dir, 
+                                          "universal", 
+                                          "data_modepath_airports.csv"))
 # scenario_noLogistics140 
 data_modepath_miles_list <- lapply(1:length(cmap_forecast_years), 
                                     function(x){ fread(file.path(cmap_forecast_dir, 
@@ -174,6 +189,24 @@ data_modepath_skims_list <- lapply(1:length(cmap_forecast_years),
                                                                        ".csv"))) 
                                    })
 names(data_modepath_skims_list) <- cmap_forecast_years
+
+data_modepath_ports_list <- lapply(1:length(cmap_forecast_years), 
+                                   function(x){ fread(file.path(cmap_forecast_dir, 
+                                                                "scenario_noLogistics140", 
+                                                                paste0("data_modepath_ports_",
+                                                                       cmap_forecast_years[x],
+                                                                       ".csv"))) 
+                                   })
+names(data_modepath_ports_list) <- cmap_forecast_years
+
+cmap_data_truck_IE_poe_list <- lapply(1:length(cmap_forecast_years), 
+                                   function(x){ fread(file.path(cmap_forecast_dir, 
+                                                                "scenario_noLogistics140", 
+                                                                paste0("cmap_data_truck_IE_poe_",
+                                                                       cmap_forecast_years[x],
+                                                                       ".csv"))) 
+                                   })
+names(cmap_data_truck_IE_poe_list) <- cmap_forecast_years
 
 # The year specific inputs need to be interpolated to produce the 20x5 inputs
 cmap_data_zone_employment_dt <- rbindlist(cmap_data_zone_employment_list, idcol = "year")
@@ -236,6 +269,16 @@ data_modepath_skims_list[["2025"]] <- data_modepath_skims_list[["2022"]]
 data_modepath_skims_list[["2035"]] <- data_modepath_skims_list[["2030"]]
 data_modepath_skims_list[["2045"]] <- data_modepath_skims_list[["2040"]]
 data_modepath_skims_list[["2055"]] <- data_modepath_skims_list[["2050"]]
+
+data_modepath_ports_list[["2025"]] <- data_modepath_ports_list[["2022"]]
+data_modepath_ports_list[["2035"]] <- data_modepath_ports_list[["2030"]]
+data_modepath_ports_list[["2045"]] <- data_modepath_ports_list[["2040"]]
+data_modepath_ports_list[["2055"]] <- data_modepath_ports_list[["2050"]]
+
+cmap_data_truck_IE_poe_list[["2025"]] <- cmap_data_truck_IE_poe_list[["2022"]]
+cmap_data_truck_IE_poe_list[["2035"]] <- cmap_data_truck_IE_poe_list[["2030"]]
+cmap_data_truck_IE_poe_list[["2045"]] <- cmap_data_truck_IE_poe_list[["2040"]]
+cmap_data_truck_IE_poe_list[["2055"]] <- cmap_data_truck_IE_poe_list[["2050"]]
 
 ### Write Out Files ----------------------------------------------------------------
 
@@ -393,6 +436,18 @@ for (thescenario in 1:length(scenario_input_paths)){
   fwrite(cmap_warehouses, file.path(scenario_input_paths[thescenario], "cmap_warehouses.csv"))
 }
 
+# cmap_data_truck_EE_poe.csv
+for (thescenario in 1:length(scenario_input_paths)){
+  # write the file
+  fwrite(cmap_data_truck_EE_poe, file.path(scenario_input_paths[thescenario], "cmap_data_truck_EE_poe.csv"))
+}
+
+# data_modepath_airports.csv
+for (thescenario in 1:length(scenario_input_paths)){
+  # write the file
+  fwrite(data_modepath_airports, file.path(scenario_input_paths[thescenario], "data_modepath_airports.csv"))
+}
+
 # data_modepath_miles.csv
 # this is a list of tables not a wide table
 names(data_modepath_miles_list)
@@ -412,6 +467,27 @@ for (thescenario in 1:length(scenario_input_paths)){
   fwrite(data_modepath_skims_list[[as.character(scenario_years[thescenario])]], 
          file.path(scenario_input_paths[thescenario], "data_modepath_skims.csv"))
 }
+
+# data_modepath_ports.csv
+# this is a list of tables not a wide table
+names(data_modepath_ports_list)
+scenario_years <- c(2022, future_years)
+for (thescenario in 1:length(scenario_input_paths)){
+  # write the file
+  fwrite(data_modepath_ports_list[[as.character(scenario_years[thescenario])]], 
+         file.path(scenario_input_paths[thescenario], "data_modepath_ports.csv"))
+}
+
+# cmap_data_truck_IE_poe.csv
+# this is a list of tables not a wide table
+names(cmap_data_truck_IE_poe_list)
+scenario_years <- c(2022, future_years)
+for (thescenario in 1:length(scenario_input_paths)){
+  # write the file
+  fwrite(cmap_data_truck_IE_poe_list[[as.character(scenario_years[thescenario])]], 
+         file.path(scenario_input_paths[thescenario], "cmap_data_truck_IE_poe.csv"))
+}
+
 
 # Three other inputs files that are not forecasted (but could be)
 
