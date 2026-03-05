@@ -63,14 +63,15 @@ sc_sim_ports <- function(BuyerSupplierPairs, ShipmentRoutesCosts, skims_airports
   pair2[, c("Attribute2_ShipTime", "path", "minc", "Mode.Domestic", "time", "cost", "avail", "MinCost", "Constant") := NULL]
   setkey(pair2, Production_zone, Consumption_zone)
   
-  modeChoiceConstants <- NULL ###TODO update for calibration
+  modeChoiceConstants <- NULL # no constants unless calibrating
   
-  pair2.list <- lapply(1:length(unique(pair2$Commodity_SCTG)),
+  pair2 <- lapply(1:length(unique(pair2$Commodity_SCTG)),
                         function(x) minLogisticsCostPort(pair2[Commodity_SCTG == unique(pair2$Commodity_SCTG)[x]], 
-                                                         ShipmentRoutesCosts, 
                                                          sctg, 
+                                                         ShipmentRoutesCosts, 
+                                                         ModeChoiceParameters,
                                                          modeChoiceConstants))
-  pair2 <- rbindlist(pair2.list)
+  pair2 <- rbindlist(pair2)
   
   pair2[, Attribute2_ShipTime := time / 24] 
   
@@ -81,7 +82,7 @@ sc_sim_ports <- function(BuyerSupplierPairs, ShipmentRoutesCosts, skims_airports
 }
 
 # Function to apply the mode choice model for shipments between domestic zone and domestic port
-minLogisticsCostPort <- function(DomesticShipmentPairs, ShipmentRoutesCosts, sctg, modeChoiceConstants=NULL){
+minLogisticsCostPort <- function(DomesticShipmentPairs, sctg, ShipmentRoutesCosts, ModeChoiceParameters, modeChoiceConstants=NULL){
   
   iSCTG <- unique(DomesticShipmentPairs$Commodity_SCTG)
   
@@ -89,7 +90,8 @@ minLogisticsCostPort <- function(DomesticShipmentPairs, ShipmentRoutesCosts, sct
                                                        iSCTG,
                                                        c(1:2,4:12,14:30,32:45,55:57),
                                                        sctg,
-                                                       ShipmentRoutesCosts, 
+                                                       ShipmentRoutesCosts,
+                                                       ModeChoiceParameters,
                                                        modeChoiceConstants)		
   
   return(DomesticShipmentPairs)

@@ -37,6 +37,7 @@ BASE_SUPPLIERS_PER_BUYER <- 20L #number of suppliers to sample in PMG
 BASE_COMBINATION_THRESHOLD <- 3500000 # max number of combinations of producers and consumers to enter into a procurement market game
 BASE_CONS_PROD_RATIO_LIMIT <- 1000000 # limit on ratio of consumers to producers to enter into the procurement market game
 BASE_OUTPUT_PURCHASE_RATIO <- 1.1 # minimum ratio between output capacity and purchase amounts to ensure markets clear
+BASE_PMG_TYPE <- 3 # 1 for C++ coded games, 2 for R coded games, 3 for R code simplfieid/fast games (2 is the preferred, 3 intended for model testing only, for speed)
 BASE_SEED_VALUE  <- 5 #seed for sampling to ensure repeatable results
 BASE_TIME_PERIOD_TRIP_POINT <- "START" #point in trip for time period allocation, from ("START", "MIDDLE", "END")
 BASE_ANNUALFACTOR <- 310  #sampling factor to convert annual truck flows to daily

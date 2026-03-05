@@ -1,8 +1,9 @@
 sc_sim_increment <- function(BuyerSupplierPairs){
   
   # Load the file saved during firm synthesis
-  load(file = file.path(SCENARIO_OUTPUT_PATH, "consumers_incremental.Rdata"))
- 
+  consumers.incremental <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, "consumers_incremental.fst"),
+                                    as.data.table = TRUE)
+  
   setnames(consumers.incremental,
            c("NAICS", "Zone"),
            c("Buyer.NAICS", "Consumption_zone"))
@@ -113,8 +114,8 @@ sc_sim_increment <- function(BuyerSupplierPairs){
   
   sampled <- rbindlist(samp_data, use.names = TRUE, fill = TRUE)
  
-  BuyerSupplierPairs <- rbindlist(list(BuyerSupplierPairs[, PMG_Incr := "PMG"]
-                                       , sampled[, PMG_Incr := "Incr"]), 
+  BuyerSupplierPairs <- rbindlist(list(BuyerSupplierPairs[, PMG_Incr := "PMG"],
+                                       sampled[, PMG_Incr := "Incr"]), 
                                   use.names = TRUE, 
                                   fill = TRUE)
   BuyerSupplierPairs[, c("wgtCat", "wgtCat2") := NULL]

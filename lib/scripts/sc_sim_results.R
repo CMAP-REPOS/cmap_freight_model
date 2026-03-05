@@ -318,6 +318,9 @@ sc_sim_modechoice_check <- function(naics_set){
   naics_set_groups <- readRDS(file.path(SCENARIO_OUTPUT_PATH, "naics_set_groups.rds"))
   naics_set_groups[, ModeChoice := ifelse(Market_Group %in% log.mode$Market, TRUE, FALSE)]
   
+  # list for summaries
+  market_summary_mc <- list()
+  
   # load the market
   for(market_group in naics_set_groups[ModeChoice == TRUE]$Market_Group){
     
@@ -339,6 +342,11 @@ sc_sim_modechoice_check <- function(naics_set){
       naics_set_groups[Market_Group == market_group,
                        c("AverageShipWeight", "Mode.Truck", "Mode.Other") :=
                          .(mean(pc$weight, na.rm = TRUE), pc[Mode.Domestic == "Truck",.N], pc[Mode.Domestic != "Truck",.N])]
+      
+      # create some additional summaries in the list
+      market_summary_mc[[market_group]] <- pc[,.(NAICS = Seller.NAICS, SCTG = Commodity_SCTG, .N, OCT = sum(OutputCapacityTons), PAT = sum(PurchaseAmountTons)),
+                                              keyby = .(Mode.Domestic, path, Ship_size)]
+        
       # rm the tables
       rm(pc)
     } else {
@@ -361,6 +369,10 @@ sc_sim_modechoice_check <- function(naics_set){
   # save the groups summary - csv and an rds to add to
   fwrite(naics_set_groups, file.path(SCENARIO_OUTPUT_PATH, "naics_set_groups_modechoice.csv"))
   saveRDS(naics_set_groups, file.path(SCENARIO_OUTPUT_PATH, "naics_set_groups.rds"))
+  
+  # save the market summary list
+  market_summary_mc <- rbindlist(market_summary_mc, idcol = "Market_Group")
+  write_fst(market_summary_mc, path = file.path(SCENARIO_OUTPUT_PATH, "market_summary_modechoice.fst"))
   
   # return naics_set
   return(naics_set)

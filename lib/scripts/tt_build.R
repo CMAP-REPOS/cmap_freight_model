@@ -58,7 +58,7 @@ tt_build <- function(shipments) {
   #Assigning a text Vehicle type
   shipments[,Vehicle:=c("2-axle","3,4 axle","semi/trailer")[Veh_Type]]
   #Aggregate by zone
-  trip_table <- shipments[,list(Trips=.N),by=list(ORI_mz=o, DES_mz=d,Vehicle,TimeOfDay)]
+  trip_table <- shipments[,list(Trips=.N),by=list(ORI_taz=o, DES_taz=d,Vehicle,TimeOfDay)]
 
   # End progress tracking
   progressEnd(dir = SCENARIO_LOG_PATH)

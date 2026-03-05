@@ -1,4 +1,4 @@
-sc_sim_modechoice <- function(naics_set, TAZGCD, ShipmentRoutesCosts, ModeChoiceParameters, sctg, c_path_mode, mode_availability){
+sc_sim_modechoice <- function(naics_set, shipsize, TAZGCD, ShipmentRoutesCosts, ModeChoiceParameters, sctg, c_path_mode, mode_availability){
   
   t0 <- Sys.time()
   
@@ -26,8 +26,12 @@ sc_sim_modechoice <- function(naics_set, TAZGCD, ShipmentRoutesCosts, ModeChoice
                     "minLogisticsCostSctgPaths",
                     "calcLogisticsCost",
                     "shipsize",
-                    "ShipmentRoutesCostsList",
-                    "mesozone_gcd"), 
+                    "TAZGCD",
+                    "ShipmentRoutesCosts",
+                    "ModeChoiceParameters", 
+                    "sctg", 
+                    "c_path_mode", 
+                    "mode_availability"), 
                   envir = environment())
     
     naicslist <- parLapplyLB(clust, 
@@ -35,7 +39,7 @@ sc_sim_modechoice <- function(naics_set, TAZGCD, ShipmentRoutesCosts, ModeChoice
                              function(x){
                                apply_modechoice(market = as.character(naics_set_expanded$Market[x]), 
                                                 g = naics_set_expanded$Group[x],
-                                                TAZGCD, ShipmentRoutesCosts, ModeChoiceParameters, 
+                                                shipsize, TAZGCD, ShipmentRoutesCosts, ModeChoiceParameters, 
                                                 sctg, c_path_mode, mode_availability)
                                
                              },
@@ -79,7 +83,7 @@ sc_sim_modechoice <- function(naics_set, TAZGCD, ShipmentRoutesCosts, ModeChoice
   
 }
 
-apply_modechoice <- function(market, g, TAZGCD, ShipmentRoutesCosts, ModeChoiceParameters, sctg, c_path_mode, mode_availability){
+apply_modechoice <- function(market, g, shipsize, TAZGCD, ShipmentRoutesCosts, ModeChoiceParameters, sctg, c_path_mode, mode_availability){
   
   # Load the files for this market and group
   conscg <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_consc.fst")),

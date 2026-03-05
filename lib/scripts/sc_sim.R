@@ -50,7 +50,9 @@ sc_sim <- function(naics_set) {
 
   # Apply the mode choice model
   naics_set <- sc_sim_modechoice(naics_set = naics_set, 
+                                 shipsize = shipsize,
                                  TAZGCD = mesozone_gcd,
+                                 ShipmentRoutesCosts = ShipmentRoutesCostsList$ShipmentRoutesCosts,
                                  ModeChoiceParameters = ShipmentRoutesCostsList$ModeChoiceParameters,
                                  sctg = ShipmentRoutesCostsList$sctg,
                                  c_path_mode = ShipmentRoutesCostsList$c_path_mode,

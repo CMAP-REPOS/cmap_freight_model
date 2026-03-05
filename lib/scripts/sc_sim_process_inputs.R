@@ -7,14 +7,12 @@ sc_sim_process_inputs <- function(envir) {
                      PMGParameters              = file.path(SYSTEM_DATA_PATH, "PMGParameters.rds"), # Input parameters to PMG
                      sctg                       = file.path(SYSTEM_DATA_PATH, "corresp_sctg_category.csv"), #correspondence between SCTG and descriptions
                      mode_availability          = file.path(SYSTEM_DATA_PATH, "data_modepath_availability.csv"), # Modes available by SCTG and ODSegment
-                     mode_description           = file.path(SYSTEM_DATA_PATH, "data_mode_description.csv"), # Mode desciption
+                     mode_description           = file.path(SYSTEM_DATA_PATH, "data_mode_description.csv"), # Mode description
                      FAF_DISTANCE               = file.path(SYSTEM_DATA_PATH, "data_faf_distance.csv"),
                      FAF_TON_DIST               = file.path(SYSTEM_DATA_PATH, "data_faf_ton_distribution.csv"),
                      FAF_TON_TRADETYPE          = file.path(SYSTEM_DATA_PATH, "data_faf_ton_tradetype.csv"),
                      mesozone_gcd               = file.path(SYSTEM_DATA_PATH, "data_mesozone_gcd.csv"),  #Mesozone to mesozone gcds
                      shipsize                   = file.path(SYSTEM_DATA_PATH, "data_commodity_shipmentsizes.csv"),
-                     skims_airports             = file.path(SYSTEM_DATA_PATH, "data_modepath_airports.csv"),
-                     skims_ports                = file.path(SYSTEM_DATA_PATH, "data_modepath_ports.csv"),
                      distchannel_calibration    = file.path(SYSTEM_DATA_PATH, "model_distchannel_calibration.csv"),
                      distchannel_food           = file.path(SYSTEM_DATA_PATH, "model_distchannel_food.csv"),
                      distchannel_food_cal       = file.path(SYSTEM_DATA_PATH, "model_distchannel_food_cal.csv"),
@@ -47,7 +45,9 @@ sc_sim_process_inputs <- function(envir) {
   setkey(envir[["FAF_DISTANCE"]],oFAFZONE,dFAFZONE)
   
   ### Load and process scenario input files
-  scenario.files <- c(skims = file.path(SCENARIO_INPUT_PATH, "data_modepath_skims.csv"))                                      
+  scenario.files <- c(skims                      = file.path(SCENARIO_INPUT_PATH, "data_modepath_skims.csv"),
+                      skims_airports             = file.path(SCENARIO_INPUT_PATH, "data_modepath_airports.csv"),
+                      skims_ports                = file.path(SCENARIO_INPUT_PATH, "data_modepath_ports.csv"))                                      
   
   loadInputs(files = scenario.files, envir = envir)
   

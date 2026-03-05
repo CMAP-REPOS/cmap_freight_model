@@ -21,7 +21,7 @@ sc_sim_shipments <- function(naics_set){
     clusterExport(clust, varlist = getGlobalVars(), envir = .GlobalEnv)
     
     clusterExport(clust, 
-                  c("runPMG"), 
+                  c("process_pmg_out"), 
                   envir = environment())
     
     pairslist <- parLapplyLB(clust, 
@@ -77,8 +77,8 @@ sc_sim_shipments <- function(naics_set){
   if(length(naics_missing) > 0) cat("Market-Group combinations missing from market simulation in sc_sim_shipments: ", naics_missing)
 
   # Data types and calculate annual value
-  pc_pairs[, Quantity.Traded := as.integer64(Quantity.Traded)]
-  pc_pairs[, Last.Iteration.Quantity := as.integer64(Last.Iteration.Quantity)]
+  #pc_pairs[, Quantity.Traded := as.integer64(Quantity.Traded)]
+  #pc_pairs[, Last.Iteration.Quantity := as.integer64(Last.Iteration.Quantity)]
   pc_pairs[, AnnualValue := (Last.Iteration.Quantity / PurchaseAmountTons) * ConVal]
 
   setkey(pc_pairs, Production_zone, Consumption_zone, path)
@@ -91,25 +91,26 @@ process_pmg_out <- function(naics, market, g){
   # read the PMG output file
   pmgout <- fread(file = file.path(SCENARIO_OUTPUT_PATH, 
                                    paste0(market, "_g", g, ".out.csv")))
+  
+  # Get just the results from the final iteration
+  pmgout <- pmgout[Last.Iteration.Quantity > 0]
 
+  # Update field names and data types
   setnames(pmgout, c("BuyerId", "SellerId"), c("BuyerID", "SellerID"))
 
   pmgout[, Quantity.Traded := as.integer64(Quantity.Traded)]
   pmgout[, Last.Iteration.Quantity := as.integer64(Last.Iteration.Quantity)]
   
-  # Get just the results from the final iteration
-  pmgout <- pmgout[Last.Iteration.Quantity > 0]
-  
-  # Load the group pc file
+  # Load the group pc file and co
   pc <- read_fst(path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_pc.fst")),
                  as.data.table = TRUE)
   
   # Merge the trades from PMG with the saved pc table
   pc_pairs <- merge(pc, pmgout, by = c("BuyerID", "SellerID"))
   
-  # Add market identifyers and the Buyer.NAICS to the pc_pairs table
+  # Add market identifyers to the pc_pairs table
   pc_pairs[, c("NAICS", "Market", "Group") := .(naics, market, g)]
-  pc_pairs[conscg, Buyer.NAICS := i.Buyer.NAICS, on = "BuyerID"]
+  pc_pairs[, Market_Group := paste(Market, Group, sep = "_")]
   
   # Save pc_pairs
   write_fst(pc_pairs, path = file.path(SCENARIO_OUTPUT_PATH, paste0(market, "_g", g, "_pc_pairs.fst")))
